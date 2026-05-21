@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+venv/
+ml/data/
+*.joblib
+*.pkl
+*.h5
+.ipynb_checkpoints/
+.vscode/
+.DS_Store
