@@ -22,18 +22,18 @@ Sensors (MEMS mic, Piezo, ECG, SpO₂, IMU)
 
 ```
 smart-stethoscope/
-├── firmware/              # ESP32 Arduino code
+├── firmware/                # ESP32 Arduino code
 │   └── main/
-│       └── main.ino       # Sensor collection, DSP, BLE transmission
-├── rpi/                   # Raspberry Pi Python code
-│   ├── inference.py       # BLE receiver + RF model inference
-│   └── dashboard.py       # Real-time display and patient logging
-├── ml/                    # Model training pipeline
-│   ├── data/              # Not committed — see Datasets section below
-│   ├── notebooks/         # Exploratory analysis
-│   ├── train.py           # Train and evaluate the Random Forest
+│       └── main.ino         # Sensor collection, DSP, BLE transmission
+├── rpi/                     # Raspberry Pi Python code
+│   ├── inference.py         # BLE (Bluetooth) receiver + RF (Recieved Feature) model inference
+│   └── dashboard.py         # Real-time display and patient logging
+├── ml/                      # Model training pipeline
+│   ├── data/                # Not committed — see Datasets section below
+│   ├── notebooks/           # Exploratory analysis
+│   ├── train.py             # Train and evaluate the Random Forest
 │   └── extract_features.py  # 17-feature extraction pipeline
-├── docs/                  # Diagrams, reports, presentations
+├── docs/                    # Diagrams, reports, presentations
 └── README.md
 ```
 
@@ -130,9 +130,11 @@ Then open a Pull Request on GitHub to merge into `main`.
 
 | Name | Role |
 |------|------|
-| [Name] | [e.g. ML pipeline, firmware] |
-| [Name] | |
-| [Name] | |
+| Noel Placencia | Team Lead |
+| Ulash Kundu Joy | Hardware Lead |
+| Jason Corona | Filtering Lead|
+| Saqlain Warrris | AI Lead|
+| Puran Chaudharry | Data Lead |
 
 ---
 
