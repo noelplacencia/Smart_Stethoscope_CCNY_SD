@@ -31,8 +31,10 @@ smart-stethoscope/
 ├── ml/                      # Model training pipeline
 │   ├── data/                # Not committed — see Datasets section below
 │   ├── notebooks/           # Exploratory analysis
-│   ├── train.py             # Train and evaluate the Random Forest
-│   └── extract_features.py  # 17-feature extraction pipeline
+│   ├── extract_features_lung.py   # 17-feature extraction — ICBHI lung sounds
+│   ├── extract_features_heart.py  # 17-feature extraction — CirCor heart sounds
+│   ├── train_lung.py              # Train and evaluate lung RF classifier
+│   └── train_heart.py             # Train and evaluate heart RF classifier
 ├── docs/                    # Diagrams, reports, presentations
 └── README.md
 ```
@@ -63,10 +65,17 @@ Update `ESP32_ADDRESS` in `inference.py` with your device's BLE MAC address (fin
 
 ```bash
 pip install librosa scipy scikit-learn numpy pandas matplotlib joblib
-python ml/train.py
+
+# Lung sound model (ICBHI 2017)
+python ml/extract_features_lung.py   # → ml/data/features_lung.csv
+python ml/train_lung.py              # → ml/data/rf_model_lung.joblib
+
+# Heart sound model (CirCor DigiScope)
+python ml/extract_features_heart.py  # → ml/data/features_heart.csv
+python ml/train_heart.py             # → ml/data/rf_model_heart.joblib
 ```
 
-This will save a trained `rf_model.joblib` to the `ml/` directory. Copy it to the Pi before running inference.
+Copy the `.joblib` files to the Pi before running inference.
 
 ---
 
