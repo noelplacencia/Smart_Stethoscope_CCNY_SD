@@ -24,7 +24,8 @@ from sklearn.metrics import (
     roc_auc_score,
     RocCurveDisplay,
 )
-from sklearn.preprocessing import label_binarize
+from sklearn.preprocessing import label_binarize, StandardScaler
+from imblearn.over_sampling import SMOTE
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 FEATURES_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_lung.csv"
@@ -84,14 +85,37 @@ def evaluate(model, X_test, y_test):
 
 
 def plot_confusion_matrix(y_test, y_pred):
-    cm   = confusion_matrix(y_test, y_pred)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=LABEL_NAMES)
+    cm      = confusion_matrix(y_test, y_pred)
+    cm_pct  = cm.astype(float) / cm.sum(axis=1, keepdims=True) * 100
 
-    fig, ax = plt.subplots(figsize=(7, 6))
-    disp.plot(ax=ax, colorbar=False, cmap="Blues")
-    ax.set_title("Smart Stethoscope — Confusion Matrix", fontsize=13, pad=12)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(cm, interpolation="nearest", cmap="Blues")
+
+    ax.set_xticks(range(len(LABEL_NAMES)))
+    ax.set_yticks(range(len(LABEL_NAMES)))
+    ax.set_xticklabels(LABEL_NAMES, fontsize=11)
+    ax.set_yticklabels(LABEL_NAMES, fontsize=11)
+    ax.set_xlabel("Predicted label", fontsize=12)
+    ax.set_ylabel("True label", fontsize=12)
+    ax.set_title("Smart Stethoscope — Lung Sound Confusion Matrix\n"
+                 "(count / % of true class)", fontsize=12, pad=12)
+
+    thresh = cm.max() / 2
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            color = "white" if cm[i, j] > thresh else "navy"
+            ax.text(j, i, f"{cm[i, j]}\n({cm_pct[i, j]:.1f}%)",
+                    ha="center", va="center", fontsize=10, color=color)
+
+    # Legend: true class totals
+    totals = cm.sum(axis=1)
+    legend_labels = [f"{name}: {n} samples" for name, n in zip(LABEL_NAMES, totals)]
+    handles = [plt.Rectangle((0, 0), 1, 1, fc="none", ec="none") for _ in legend_labels]
+    ax.legend(handles, legend_labels, title="True class totals",
+              loc="upper right", bbox_to_anchor=(1.35, 1), fontsize=9, title_fontsize=9)
+
     plt.tight_layout()
-    plt.savefig(CM_OUT, dpi=150)
+    plt.savefig(CM_OUT, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"\nConfusion matrix saved to: {CM_OUT}")
 
@@ -153,6 +177,19 @@ def main():
     )
     print(f"\nTrain set : {len(X_train)} windows")
     print(f"Test set  : {len(X_test)} windows")
+
+    # Scale
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test  = scaler.transform(X_test)
+
+    # SMOTE — balance minority classes on training set only
+    print("\nApplying SMOTE to training set...")
+    smote = SMOTE(random_state=42)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+    print(f"Training set after SMOTE: {len(X_train)} windows")
+    for i, name in enumerate(LABEL_NAMES):
+        print(f"  {name:<10} {np.sum(y_train == i)}")
 
     # Train
     print("\nTraining Random Forest...")
