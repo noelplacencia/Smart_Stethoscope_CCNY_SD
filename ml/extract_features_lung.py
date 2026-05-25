@@ -1,10 +1,10 @@
 """
-extract_features.py
+extract_features_lung.py
 -------------------
 Loads the ICBHI 2017 dataset, applies the smart stethoscope DSP pipeline,
 and extracts a 17-feature vector per 3-second window.
 
-Output: ml/data/features.csv
+Output: ml/data/features_lung.csv
 """
 
 import os
@@ -15,7 +15,7 @@ from scipy.signal import butter, filtfilt
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 DATA_DIR  = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/ICBHI_final_database"
-OUT_CSV   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features.csv"
+OUT_CSV   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_lung.csv"
 
 # ── DSP parameters ─────────────────────────────────────────────────────────────
 TARGET_SR   = 16000   # resample everything to 16 kHz

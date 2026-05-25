@@ -1,13 +1,13 @@
 """
-train.py
+train_lung.py
 --------
 Trains a Random Forest classifier on the extracted ICBHI features.
 Evaluates with cross-validation and saves the trained model.
 
 Output:
-    ml/data/rf_model.joblib   — trained model (copy this to the RPi)
-    ml/data/confusion_matrix.png
-    ml/data/roc_curve.png
+    ml/data/rf_model_lung.joblib   — trained model (copy this to the RPi)
+    ml/data/confusion_matrix_lung.png
+    ml/data/roc_curve_lung.png
 """
 
 import numpy as np
@@ -27,10 +27,10 @@ from sklearn.metrics import (
 from sklearn.preprocessing import label_binarize
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-FEATURES_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features.csv"
-MODEL_OUT    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/rf_model.joblib"
-CM_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/confusion_matrix.png"
-ROC_OUT      = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/roc_curve.png"
+FEATURES_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_lung.csv"
+MODEL_OUT    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/rf_model_lung.joblib"
+CM_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/confusion_matrix_lung.png"
+ROC_OUT      = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/roc_curve_lung.png"
 
 # ── Label names ────────────────────────────────────────────────────────────────
 LABEL_NAMES = ["normal", "crackle", "wheeze", "both"]
@@ -175,7 +175,7 @@ def main():
     # Save model
     joblib.dump(model, MODEL_OUT)
     print(f"\nModel saved to: {MODEL_OUT}")
-    print("\nCopy rf_model.joblib to the Raspberry Pi when ready.")
+    print("\nCopy rf_model_lung.joblib to the Raspberry Pi when ready.")
 
 
 if __name__ == "__main__":
