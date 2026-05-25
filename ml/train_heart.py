@@ -26,6 +26,8 @@ from sklearn.metrics import (
     roc_auc_score,
     RocCurveDisplay,
 )
+from sklearn.preprocessing import StandardScaler
+from imblearn.over_sampling import SMOTE
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 FEATURES_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_heart.csv"
@@ -34,6 +36,7 @@ CM_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/confusion_matrix_he
 ROC_OUT      = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/roc_curve_heart.png"
 
 LABEL_NAMES = ["absent", "present"]
+THRESHOLD   = 0.3    # lower than default 0.5 — prioritises catching murmurs over false positives
 
 
 def load_data():
@@ -65,29 +68,52 @@ def train_model(X_train, y_train):
 
 
 def evaluate(model, X_test, y_test):
-    y_pred = model.predict(X_test)
     y_prob = model.predict_proba(X_test)[:, 1]
+    y_pred = (y_prob >= THRESHOLD).astype(int)
 
     print("\n── Classification Report ─────────────────────────────────────")
     print(classification_report(y_test, y_pred, target_names=LABEL_NAMES))
 
     acc = np.mean(y_pred == y_test)
     auc = roc_auc_score(y_test, y_prob)
-    print(f"Overall accuracy : {acc:.1%}")
-    print(f"ROC-AUC          : {auc:.3f}")
+    print(f"Decision threshold : {THRESHOLD}")
+    print(f"Overall accuracy   : {acc:.1%}")
+    print(f"ROC-AUC            : {auc:.3f}")
 
     return y_pred, y_prob
 
 
 def plot_confusion_matrix(y_test, y_pred):
-    cm   = confusion_matrix(y_test, y_pred)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=LABEL_NAMES)
+    cm     = confusion_matrix(y_test, y_pred)
+    cm_pct = cm.astype(float) / cm.sum(axis=1, keepdims=True) * 100
 
-    fig, ax = plt.subplots(figsize=(6, 5))
-    disp.plot(ax=ax, colorbar=False, cmap="Blues")
-    ax.set_title("Smart Stethoscope — Heart Sound Confusion Matrix", fontsize=12, pad=12)
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.imshow(cm, interpolation="nearest", cmap="Blues")
+
+    ax.set_xticks(range(len(LABEL_NAMES)))
+    ax.set_yticks(range(len(LABEL_NAMES)))
+    ax.set_xticklabels(LABEL_NAMES, fontsize=11)
+    ax.set_yticklabels(LABEL_NAMES, fontsize=11)
+    ax.set_xlabel("Predicted label", fontsize=12)
+    ax.set_ylabel("True label", fontsize=12)
+    ax.set_title("Smart Stethoscope — Heart Sound Confusion Matrix\n"
+                 "(count / % of true class)", fontsize=12, pad=12)
+
+    thresh = cm.max() / 2
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            color = "white" if cm[i, j] > thresh else "navy"
+            ax.text(j, i, f"{cm[i, j]}\n({cm_pct[i, j]:.1f}%)",
+                    ha="center", va="center", fontsize=11, color=color)
+
+    totals = cm.sum(axis=1)
+    legend_labels = [f"{name}: {n} samples" for name, n in zip(LABEL_NAMES, totals)]
+    handles = [plt.Rectangle((0, 0), 1, 1, fc="none", ec="none") for _ in legend_labels]
+    ax.legend(handles, legend_labels, title="True class totals",
+              loc="upper right", bbox_to_anchor=(1.4, 1), fontsize=9, title_fontsize=9)
+
     plt.tight_layout()
-    plt.savefig(CM_OUT, dpi=150)
+    plt.savefig(CM_OUT, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"\nConfusion matrix saved to: {CM_OUT}")
 
@@ -133,6 +159,19 @@ def main():
     )
     print(f"\nTrain : {len(X_train)} windows")
     print(f"Test  : {len(X_test)} windows")
+
+    # Scale
+    scaler  = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test  = scaler.transform(X_test)
+
+    # SMOTE — balance classes on training set only
+    print("\nApplying SMOTE to training set...")
+    smote = SMOTE(random_state=42)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
+    print(f"Training set after SMOTE: {len(X_train)} windows")
+    for i, name in enumerate(LABEL_NAMES):
+        print(f"  {name:<10} {np.sum(y_train == i)}")
 
     print("\nTraining Random Forest...")
     model = train_model(X_train, y_train)
