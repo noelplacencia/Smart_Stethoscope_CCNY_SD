@@ -8,7 +8,7 @@ Feature vector matches extract_features.py exactly so both lung and heart
 data can feed the same training pipeline.
 
 Dataset layout expected (download from PhysioNet):
-    ml/data/circor-heart-sound/
+    ml/data/the-circor-digiscope-phonocardiogram-dataset-1.0.3/
         training_data.csv       ← patient metadata + murmur labels
         training_data/          ← {patient_id}_{location}.wav files
 
@@ -27,8 +27,8 @@ import librosa
 from scipy.signal import butter, filtfilt
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-DATA_DIR = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/circor-heart-sound/training_data"
-CSV_PATH = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/circor-heart-sound/training_data.csv"
+DATA_DIR = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data"
+CSV_PATH = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data.csv"
 OUT_CSV  = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_heart.csv"
 
 # ── DSP parameters ─────────────────────────────────────────────────────────────
