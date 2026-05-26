@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import joblib
 
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.model_selection import GroupShuffleSplit, GroupKFold, cross_val_score
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
@@ -30,6 +30,7 @@ from imblearn.over_sampling import SMOTE
 # ── Paths ──────────────────────────────────────────────────────────────────────
 FEATURES_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_lung.csv"
 MODEL_OUT    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/rf_model_lung.joblib"
+SCALER_OUT   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/scaler_lung.joblib"
 CM_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/confusion_matrix_lung.png"
 ROC_OUT      = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/roc_curve_lung.png"
 
@@ -39,15 +40,17 @@ LABEL_NAMES = ["normal", "crackle", "wheeze", "both"]
 
 def load_data():
     df = pd.read_csv(FEATURES_CSV)
-    X = df.drop(columns=["label"]).values
-    y = df["label"].values
+    X      = df.drop(columns=["label", "patient_id"]).values
+    y      = df["label"].values
+    groups = df["patient_id"].values
     print(f"Loaded {len(df)} windows, {X.shape[1]} features each")
+    print(f"Unique patients: {df['patient_id'].nunique()}")
     print(f"Class distribution:")
     for i, name in enumerate(LABEL_NAMES):
         count = np.sum(y == i)
         pct   = count / len(y) * 100
         print(f"  {name:<10} {count:>5}  ({pct:.1f}%)")
-    return X, y
+    return X, y, groups
 
 
 def train_model(X_train, y_train):
@@ -144,19 +147,24 @@ def plot_roc_curves(model, X_test, y_test):
     print(f"ROC curves saved to     : {ROC_OUT}")
 
 
-def cross_validate(model, X, y):
-    print("\n── 5-Fold Cross Validation ───────────────────────────────────")
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    # StratifiedKFold preserves class proportions in each fold
-    scores = cross_val_score(model, X, y, cv=cv, scoring="f1_macro", n_jobs=-1)
+def cross_validate(model, X, y, groups):
+    print("\n── 5-Fold Cross Validation (patient-level) ───────────────────")
+    cv     = GroupKFold(n_splits=5)
+    scores = cross_val_score(model, X, y, cv=cv, groups=groups,
+                             scoring="f1_macro", n_jobs=-1)
     print(f"F1 macro per fold : {[f'{s:.3f}' for s in scores]}")
     print(f"Mean F1 macro     : {scores.mean():.3f} ± {scores.std():.3f}")
 
 
 def print_feature_importance(model):
     print("\n── Top 10 Most Important Features ───────────────────────────")
-    feature_names = [f"mfcc_{i+1}" for i in range(13)] + \
-                    ["spectral_centroid", "spectral_rolloff", "zcr", "rms"]
+    feature_names = (
+        [f"mfcc_{i+1}"       for i in range(13)] +
+        [f"delta_mfcc_{i+1}" for i in range(13)] +
+        ["spectral_centroid", "spectral_rolloff", "zcr", "rms"] +
+        [f"spectral_contrast_{i+1}" for i in range(7)] +
+        ["kurtosis"]
+    )
     importances = model.feature_importances_
     indices     = np.argsort(importances)[::-1][:10]
     for rank, idx in enumerate(indices, 1):
@@ -169,14 +177,17 @@ def main():
     print("=" * 60 + "\n")
 
     # Load
-    X, y = load_data()
+    X, y, groups = load_data()
 
-    # Split — 80% train, 20% test, stratified to preserve class ratios
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-    print(f"\nTrain set : {len(X_train)} windows")
-    print(f"Test set  : {len(X_test)} windows")
+    # Split by patient so no patient appears in both train and test
+    gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    train_idx, test_idx = next(gss.split(X, y, groups))
+    X_train, X_test = X[train_idx], X[test_idx]
+    y_train, y_test = y[train_idx], y[test_idx]
+    train_patients  = len(set(groups[train_idx]))
+    test_patients   = len(set(groups[test_idx]))
+    print(f"\nTrain set : {len(X_train)} windows ({train_patients} patients)")
+    print(f"Test set  : {len(X_test)} windows ({test_patients} patients)")
 
     # Scale
     scaler = StandardScaler()
@@ -200,7 +211,7 @@ def main():
     y_pred, y_prob = evaluate(model, X_test, y_test)
 
     # Cross-validation on full dataset
-    cross_validate(model, X, y)
+    cross_validate(model, X, y, groups)
 
     # Feature importance
     print_feature_importance(model)
@@ -209,10 +220,12 @@ def main():
     plot_confusion_matrix(y_test, y_pred)
     plot_roc_curves(model, X_test, y_test)
 
-    # Save model
+    # Save model and scaler
     joblib.dump(model, MODEL_OUT)
-    print(f"\nModel saved to: {MODEL_OUT}")
-    print("\nCopy rf_model_lung.joblib to the Raspberry Pi when ready.")
+    joblib.dump(scaler, SCALER_OUT)
+    print(f"\nModel saved to : {MODEL_OUT}")
+    print(f"Scaler saved to: {SCALER_OUT}")
+    print("\nCopy both .joblib files to the Raspberry Pi when ready.")
 
 
 if __name__ == "__main__":
