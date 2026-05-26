@@ -30,11 +30,19 @@ smart-stethoscope/
 │   └── dashboard.py         # Real-time display and patient logging
 ├── ml/                      # Model training pipeline
 │   ├── data/                # Not committed — see Datasets section below
+│   │   ├── rf_model_lung.joblib       # Trained lung RF model
+│   │   ├── rf_model_heart.joblib      # Trained heart RF model
+│   │   ├── rf_model_piezo.joblib      # Trained piezo RF model
+│   │   ├── scaler_lung.joblib         # StandardScaler for lung features
+│   │   ├── scaler_heart.joblib        # StandardScaler for heart features
+│   │   └── scaler_piezo.joblib        # StandardScaler for piezo features
 │   ├── notebooks/           # Exploratory analysis
-│   ├── extract_features_lung.py   # 17-feature extraction — ICBHI lung sounds
+│   ├── extract_features_lung.py   # 38-feature extraction — ICBHI lung sounds (MEMS mic)
 │   ├── extract_features_heart.py  # 17-feature extraction — CirCor heart sounds
+│   ├── extract_features_piezo.py  # 38-feature extraction — ICBHI lung sounds (piezo sensor)
 │   ├── train_lung.py              # Train and evaluate lung RF classifier
-│   └── train_heart.py             # Train and evaluate heart RF classifier
+│   ├── train_heart.py             # Train and evaluate heart RF classifier
+│   └── train_piezo.py             # Train and evaluate piezo RF classifier
 ├── docs/                    # Diagrams, reports, presentations
 └── README.md
 ```
@@ -64,15 +72,19 @@ Update `ESP32_ADDRESS` in `inference.py` with your device's BLE MAC address (fin
 ### ML training (laptop)
 
 ```bash
-pip install librosa scipy scikit-learn numpy pandas matplotlib joblib
+pip install librosa scipy scikit-learn imbalanced-learn numpy pandas matplotlib joblib
 
-# Lung sound model (ICBHI 2017)
+# Lung sound model — MEMS mic (ICBHI 2017, 38 features)
 python ml/extract_features_lung.py   # → ml/data/features_lung.csv
-python ml/train_lung.py              # → ml/data/rf_model_lung.joblib
+python ml/train_lung.py              # → ml/data/rf_model_lung.joblib, scaler_lung.joblib
 
-# Heart sound model (CirCor DigiScope)
+# Heart sound model — murmur detection (CirCor DigiScope, 17 features)
 python ml/extract_features_heart.py  # → ml/data/features_heart.csv
-python ml/train_heart.py             # → ml/data/rf_model_heart.joblib
+python ml/train_heart.py             # → ml/data/rf_model_heart.joblib, scaler_heart.joblib
+
+# Piezo sensor model — chest wall vibration (ICBHI 2017, 38 features)
+python ml/extract_features_piezo.py  # → ml/data/features_piezo.csv
+python ml/train_piezo.py             # → ml/data/rf_model_piezo.joblib, scaler_piezo.joblib
 ```
 
 Copy the `.joblib` files to the Pi before running inference.
