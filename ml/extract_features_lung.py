@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import librosa
 from scipy.signal import butter, filtfilt
+from scipy.stats import kurtosis as signal_kurtosis
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 DATA_DIR  = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/ICBHI_final_database"
@@ -42,34 +43,34 @@ def bandpass_filter(signal: np.ndarray, sr: int) -> np.ndarray:
 
 def extract_features(window: np.ndarray, sr: int) -> np.ndarray:
     """
-    Extract 17 features from a single audio window.
-    Must match the exact order implemented later on the ESP32.
+    38 features per window.
 
     Features:
-        0-12  — MFCCs 1-13 (mean across window)
-        13    — Spectral centroid (mean)
-        14    — Spectral rolloff (mean)
-        15    — Zero crossing rate (mean)
-        16    — RMS energy (mean)
+        0-12   MFCCs 1-13 (mean)
+        13-25  Delta MFCCs 1-13 (mean) — temporal dynamics, patient-invariant
+        26     Spectral centroid (mean)
+        27     Spectral rolloff at 85% (mean)
+        28     Zero crossing rate (mean)
+        29     RMS energy (mean)
+        30-36  Spectral contrast bands 1-7 (mean) — peak/valley ratio per band
+        37     Kurtosis — signal impulsiveness (high=crackle, low=wheeze)
     """
-    # MFCCs (13 coefficients, mean across time frames)
-    mfccs = librosa.feature.mfcc(y=window, sr=sr, n_mfcc=13)
-    mfcc_means = np.mean(mfccs, axis=1)  # shape (13,)
+    mfccs            = librosa.feature.mfcc(y=window, sr=sr, n_mfcc=13)
+    mfcc_means       = np.mean(mfccs, axis=1)
+    delta_mfcc_means = np.mean(librosa.feature.delta(mfccs), axis=1)
 
-    # Spectral centroid
     centroid = np.mean(librosa.feature.spectral_centroid(y=window, sr=sr))
+    rolloff  = np.mean(librosa.feature.spectral_rolloff(y=window, sr=sr, roll_percent=0.85))
+    zcr      = np.mean(librosa.feature.zero_crossing_rate(y=window))
+    rms      = np.mean(librosa.feature.rms(y=window))
 
-    # Spectral rolloff (85% of energy)
-    rolloff = np.mean(librosa.feature.spectral_rolloff(y=window, sr=sr, roll_percent=0.85))
+    contrast = np.mean(librosa.feature.spectral_contrast(y=window, sr=sr, n_bands=6, fmin=200.0), axis=1)
+    kurt     = signal_kurtosis(window)
 
-    # Zero crossing rate
-    zcr = np.mean(librosa.feature.zero_crossing_rate(y=window))
-
-    # RMS energy
-    rms = np.mean(librosa.feature.rms(y=window))
-
-    features = np.concatenate([mfcc_means, [centroid, rolloff, zcr, rms]])
-    assert len(features) == 17, f"Expected 17 features, got {len(features)}"
+    features = np.concatenate([mfcc_means, delta_mfcc_means,
+                                [centroid, rolloff, zcr, rms],
+                                contrast, [kurt]])
+    assert len(features) == 38, f"Expected 38 features, got {len(features)}"
     return features
 
 
@@ -144,12 +145,14 @@ def main():
 
     all_features = []
     all_labels   = []
+    all_patients = []
     skipped      = 0
 
     for i, wav_name in enumerate(sorted(wav_files)):
-        base     = wav_name.replace(".wav", "")
-        wav_path = os.path.join(DATA_DIR, wav_name)
-        txt_path = os.path.join(DATA_DIR, base + ".txt")
+        base       = wav_name.replace(".wav", "")
+        wav_path   = os.path.join(DATA_DIR, wav_name)
+        txt_path   = os.path.join(DATA_DIR, base + ".txt")
+        patient_id = wav_name.split("_")[0]
 
         if not os.path.exists(txt_path):
             print(f"  [SKIP] No annotation for {wav_name}")
@@ -161,6 +164,7 @@ def main():
             for feats, label in results:
                 all_features.append(feats)
                 all_labels.append(label)
+                all_patients.append(patient_id)
 
             print(f"  [{i+1}/{len(wav_files)}] {wav_name} — {len(results)} windows")
 
@@ -169,19 +173,26 @@ def main():
             skipped += 1
 
     # ── Save to CSV ────────────────────────────────────────────────────────────
-    col_names = [f"mfcc_{i+1}" for i in range(13)] + \
-                ["spectral_centroid", "spectral_rolloff", "zcr", "rms"]
+    col_names = (
+        [f"mfcc_{i+1}"       for i in range(13)] +
+        [f"delta_mfcc_{i+1}" for i in range(13)] +
+        ["spectral_centroid", "spectral_rolloff", "zcr", "rms"] +
+        [f"spectral_contrast_{i+1}" for i in range(7)] +
+        ["kurtosis"]
+    )
 
     df = pd.DataFrame(all_features, columns=col_names)
-    df["label"] = all_labels
+    df["label"]      = all_labels
+    df["patient_id"] = all_patients
 
     df.to_csv(OUT_CSV, index=False)
 
     print(f"\nDone.")
-    print(f"  Total windows : {len(df)}")
-    print(f"  Skipped files : {skipped}")
-    print(f"  Label counts  :\n{df['label'].value_counts().rename({v:k for k,v in LABEL_MAP.items()})}")
-    print(f"  Saved to      : {OUT_CSV}")
+    print(f"  Total windows  : {len(df)}")
+    print(f"  Unique patients: {df['patient_id'].nunique()}")
+    print(f"  Skipped files  : {skipped}")
+    print(f"  Label counts   :\n{df['label'].value_counts().rename({v:k for k,v in LABEL_MAP.items()})}")
+    print(f"  Saved to       : {OUT_CSV}")
 
 
 if __name__ == "__main__":
