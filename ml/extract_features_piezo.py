@@ -1,0 +1,172 @@
+"""
+extract_features_piezo.py
+-------------------------
+Loads the ICBHI 2017 dataset, applies DSP tuned for a contact piezo sensor,
+and extracts a 17-feature vector per 3-second window.
+
+Piezo sensors capture chest wall vibration rather than air-pressure acoustics.
+The bandpass is narrowed to 20–800 Hz and the signal is resampled to 4 kHz
+to reflect the piezo's lower-frequency response and the ESP32 ADC sample rate.
+
+Feature vector is identical to the lung and heart pipelines so all three models
+share the same inference path on the Raspberry Pi.
+
+Dataset layout (same as extract_features_lung.py):
+    ml/data/ICBHI_final_database/
+        {recording}.wav
+        {recording}.txt   ← start/end/crackle/wheeze per cycle
+
+Labels (cycle-level, from annotation .txt files):
+    normal  → 0
+    crackle → 1
+    wheeze  → 2
+    both    → 3
+
+Output: ml/data/features_piezo.csv
+"""
+
+import os
+import numpy as np
+import pandas as pd
+import librosa
+from scipy.signal import butter, filtfilt
+
+# ── Paths ──────────────────────────────────────────────────────────────────────
+DATA_DIR = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/ICBHI_final_database"
+OUT_CSV  = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_piezo.csv"
+
+# ── DSP parameters ─────────────────────────────────────────────────────────────
+TARGET_SR    = 4000    # piezo ADC rate on ESP32; contact vibration < 1 kHz
+WINDOW_SEC   = 3.0
+HOP_SEC      = 1.5     # 50% overlap
+LOWCUT       = 20.0
+HIGHCUT      = 1000.0  # raised from 800 Hz to capture full wheeze band (~20–1000 Hz)
+BUTTER_ORDER = 6
+
+# ── Label map ──────────────────────────────────────────────────────────────────
+LABEL_MAP = {"normal": 0, "crackle": 1, "wheeze": 2, "both": 3}
+
+
+def bandpass_filter(signal: np.ndarray, sr: int) -> np.ndarray:
+    nyq = sr / 2.0
+    b, a = butter(BUTTER_ORDER, [LOWCUT / nyq, HIGHCUT / nyq], btype="band")
+    return filtfilt(b, a, signal)
+
+
+def extract_features(window: np.ndarray, sr: int) -> np.ndarray:
+    """
+    17 features — identical order to lung and heart pipelines.
+
+    Features:
+        0-12  MFCCs 1-13 (mean across window)
+        13    Spectral centroid (mean)
+        14    Spectral rolloff at 85% (mean)
+        15    Zero crossing rate (mean)
+        16    RMS energy (mean)
+    """
+    mfccs      = librosa.feature.mfcc(y=window, sr=sr, n_mfcc=13)
+    mfcc_means = np.mean(mfccs, axis=1)
+
+    centroid = np.mean(librosa.feature.spectral_centroid(y=window, sr=sr))
+    rolloff  = np.mean(librosa.feature.spectral_rolloff(y=window, sr=sr, roll_percent=0.85))
+    zcr      = np.mean(librosa.feature.zero_crossing_rate(y=window))
+    rms      = np.mean(librosa.feature.rms(y=window))
+
+    features = np.concatenate([mfcc_means, [centroid, rolloff, zcr, rms]])
+    assert len(features) == 17, f"Expected 17 features, got {len(features)}"
+    return features
+
+
+def parse_annotation(txt_path: str):
+    cycles = []
+    with open(txt_path, "r") as f:
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) < 4:
+                continue
+            start   = float(parts[0])
+            end     = float(parts[1])
+            crackle = int(parts[2])
+            wheeze  = int(parts[3])
+
+            if crackle and wheeze:
+                label = "both"
+            elif crackle:
+                label = "crackle"
+            elif wheeze:
+                label = "wheeze"
+            else:
+                label = "normal"
+
+            cycles.append((start, end, label))
+    return cycles
+
+
+def process_file(wav_path: str, txt_path: str):
+    audio, _ = librosa.load(wav_path, sr=TARGET_SR, mono=True)
+    audio = bandpass_filter(audio, TARGET_SR)
+
+    cycles      = parse_annotation(txt_path)
+    window_size = int(WINDOW_SEC * TARGET_SR)
+    hop_size    = int(HOP_SEC   * TARGET_SR)
+
+    results = []
+    for (start, end, label) in cycles:
+        start_sample = int(start * TARGET_SR)
+        end_sample   = int(end   * TARGET_SR)
+        cycle_audio  = audio[start_sample:end_sample]
+
+        i = 0
+        while i + window_size <= len(cycle_audio):
+            feats = extract_features(cycle_audio[i : i + window_size], TARGET_SR)
+            results.append((feats, LABEL_MAP[label]))
+            i += hop_size
+
+    return results
+
+
+def main():
+    print(f"Scanning dataset at: {DATA_DIR}")
+
+    wav_files = [f for f in os.listdir(DATA_DIR) if f.endswith(".wav")]
+    print(f"Found {len(wav_files)} WAV files\n")
+
+    all_features, all_labels = [], []
+    skipped = 0
+
+    for i, wav_name in enumerate(sorted(wav_files)):
+        base     = wav_name.replace(".wav", "")
+        wav_path = os.path.join(DATA_DIR, wav_name)
+        txt_path = os.path.join(DATA_DIR, base + ".txt")
+
+        if not os.path.exists(txt_path):
+            print(f"  [SKIP] No annotation for {wav_name}")
+            skipped += 1
+            continue
+
+        try:
+            results = process_file(wav_path, txt_path)
+            for feats, label in results:
+                all_features.append(feats)
+                all_labels.append(label)
+            print(f"  [{i+1}/{len(wav_files)}] {wav_name} — {len(results)} windows")
+        except Exception as e:
+            print(f"  [ERROR] {wav_name}: {e}")
+            skipped += 1
+
+    col_names = [f"mfcc_{i+1}" for i in range(13)] + \
+                ["spectral_centroid", "spectral_rolloff", "zcr", "rms"]
+
+    df = pd.DataFrame(all_features, columns=col_names)
+    df["label"] = all_labels
+    df.to_csv(OUT_CSV, index=False)
+
+    print(f"\nDone.")
+    print(f"  Total windows : {len(df)}")
+    print(f"  Skipped files : {skipped}")
+    print(f"  Label counts  :\n{df['label'].value_counts().rename({v:k for k,v in LABEL_MAP.items()})}")
+    print(f"  Saved to      : {OUT_CSV}")
+
+
+if __name__ == "__main__":
+    main()

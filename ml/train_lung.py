@@ -30,6 +30,7 @@ from imblearn.over_sampling import SMOTE
 # ── Paths ──────────────────────────────────────────────────────────────────────
 FEATURES_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_lung.csv"
 MODEL_OUT    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/rf_model_lung.joblib"
+SCALER_OUT   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/scaler_lung.joblib"
 CM_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/confusion_matrix_lung.png"
 ROC_OUT      = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/roc_curve_lung.png"
 
@@ -209,10 +210,12 @@ def main():
     plot_confusion_matrix(y_test, y_pred)
     plot_roc_curves(model, X_test, y_test)
 
-    # Save model
+    # Save model and scaler
     joblib.dump(model, MODEL_OUT)
-    print(f"\nModel saved to: {MODEL_OUT}")
-    print("\nCopy rf_model_lung.joblib to the Raspberry Pi when ready.")
+    joblib.dump(scaler, SCALER_OUT)
+    print(f"\nModel saved to : {MODEL_OUT}")
+    print(f"Scaler saved to: {SCALER_OUT}")
+    print("\nCopy both .joblib files to the Raspberry Pi when ready.")
 
 
 if __name__ == "__main__":

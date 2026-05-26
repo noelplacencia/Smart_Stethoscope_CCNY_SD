@@ -1,15 +1,20 @@
 """
-train_heart.py
+train_piezo.py
 --------------
-Trains a Random Forest on the CirCor heart sound features (binary classification).
+Trains a Random Forest on piezo-extracted ICBHI features.
+Same 4-class problem as the lung pipeline but features were extracted
+with piezo-tuned DSP (4 kHz SR, 20–800 Hz bandpass).
 
-    0 = Absent  (no murmur)
-    1 = Present (murmur detected)
+    0 = normal
+    1 = crackle
+    2 = wheeze
+    3 = both
 
 Output:
-    ml/data/rf_model_heart.joblib   ← copy to RPi
-    ml/data/confusion_matrix_heart.png
-    ml/data/roc_curve_heart.png
+    ml/data/rf_model_piezo.joblib   ← copy to RPi
+    ml/data/scaler_piezo.joblib     ← copy to RPi
+    ml/data/confusion_matrix_piezo.png
+    ml/data/roc_curve_piezo.png
 """
 
 import numpy as np
@@ -22,23 +27,20 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
-    ConfusionMatrixDisplay,
     roc_auc_score,
     RocCurveDisplay,
 )
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import label_binarize, StandardScaler
 from imblearn.over_sampling import SMOTE
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-FEATURES_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_heart.csv"
-MODEL_OUT     = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/rf_model_heart.joblib"
-SCALER_OUT    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/scaler_heart.joblib"
-THRESHOLD_OUT = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/threshold_heart.joblib"
-CM_OUT        = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/confusion_matrix_heart.png"
-ROC_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/roc_curve_heart.png"
+FEATURES_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_piezo.csv"
+MODEL_OUT    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/rf_model_piezo.joblib"
+SCALER_OUT   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/scaler_piezo.joblib"
+CM_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/confusion_matrix_piezo.png"
+ROC_OUT      = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/roc_curve_piezo.png"
 
-LABEL_NAMES = ["absent", "present"]
-THRESHOLD   = 0.3    # lower than default 0.5 — prioritises catching murmurs over false positives
+LABEL_NAMES = ["normal", "crackle", "wheeze", "both"]
 
 
 def load_data():
@@ -70,17 +72,18 @@ def train_model(X_train, y_train):
 
 
 def evaluate(model, X_test, y_test):
-    y_prob = model.predict_proba(X_test)[:, 1]
-    y_pred = (y_prob >= THRESHOLD).astype(int)
+    y_pred = model.predict(X_test)
+    y_prob = model.predict_proba(X_test)
 
     print("\n── Classification Report ─────────────────────────────────────")
     print(classification_report(y_test, y_pred, target_names=LABEL_NAMES))
 
     acc = np.mean(y_pred == y_test)
-    auc = roc_auc_score(y_test, y_prob)
-    print(f"Decision threshold : {THRESHOLD}")
-    print(f"Overall accuracy   : {acc:.1%}")
-    print(f"ROC-AUC            : {auc:.3f}")
+    print(f"Overall accuracy : {acc:.1%}")
+
+    y_bin = label_binarize(y_test, classes=[0, 1, 2, 3])
+    auc   = roc_auc_score(y_bin, y_prob, multi_class="ovr", average="macro")
+    print(f"Macro ROC-AUC   : {auc:.3f}")
 
     return y_pred, y_prob
 
@@ -89,7 +92,7 @@ def plot_confusion_matrix(y_test, y_pred):
     cm     = confusion_matrix(y_test, y_pred)
     cm_pct = cm.astype(float) / cm.sum(axis=1, keepdims=True) * 100
 
-    fig, ax = plt.subplots(figsize=(7, 5))
+    fig, ax = plt.subplots(figsize=(8, 6))
     ax.imshow(cm, interpolation="nearest", cmap="Blues")
 
     ax.set_xticks(range(len(LABEL_NAMES)))
@@ -98,7 +101,7 @@ def plot_confusion_matrix(y_test, y_pred):
     ax.set_yticklabels(LABEL_NAMES, fontsize=11)
     ax.set_xlabel("Predicted label", fontsize=12)
     ax.set_ylabel("True label", fontsize=12)
-    ax.set_title("Smart Stethoscope — Heart Sound Confusion Matrix\n"
+    ax.set_title("Smart Stethoscope — Piezo Confusion Matrix\n"
                  "(count / % of true class)", fontsize=12, pad=12)
 
     thresh = cm.max() / 2
@@ -106,13 +109,13 @@ def plot_confusion_matrix(y_test, y_pred):
         for j in range(cm.shape[1]):
             color = "white" if cm[i, j] > thresh else "navy"
             ax.text(j, i, f"{cm[i, j]}\n({cm_pct[i, j]:.1f}%)",
-                    ha="center", va="center", fontsize=11, color=color)
+                    ha="center", va="center", fontsize=10, color=color)
 
     totals = cm.sum(axis=1)
     legend_labels = [f"{name}: {n} samples" for name, n in zip(LABEL_NAMES, totals)]
     handles = [plt.Rectangle((0, 0), 1, 1, fc="none", ec="none") for _ in legend_labels]
     ax.legend(handles, legend_labels, title="True class totals",
-              loc="upper right", bbox_to_anchor=(1.4, 1), fontsize=9, title_fontsize=9)
+              loc="upper right", bbox_to_anchor=(1.35, 1), fontsize=9, title_fontsize=9)
 
     plt.tight_layout()
     plt.savefig(CM_OUT, dpi=150, bbox_inches="tight")
@@ -120,23 +123,36 @@ def plot_confusion_matrix(y_test, y_pred):
     print(f"\nConfusion matrix saved to: {CM_OUT}")
 
 
-def plot_roc_curve(y_test, y_prob):
-    fig, ax = plt.subplots(figsize=(7, 6))
-    RocCurveDisplay.from_predictions(y_test, y_prob, name="murmur (present)", ax=ax)
+def plot_roc_curves(model, X_test, y_test):
+    y_bin  = label_binarize(y_test, classes=[0, 1, 2, 3])
+    y_prob = model.predict_proba(X_test)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    colors = ["#1D9E75", "#534AB7", "#D85A30", "#E5A020"]
+
+    for i, (name, color) in enumerate(zip(LABEL_NAMES, colors)):
+        RocCurveDisplay.from_predictions(
+            y_bin[:, i], y_prob[:, i],
+            name=name, color=color, ax=ax
+        )
+
     ax.plot([0, 1], [0, 1], "k--", linewidth=0.8)
-    ax.set_title("Smart Stethoscope — Heart Sound ROC Curve", fontsize=12, pad=12)
+    ax.set_title("Smart Stethoscope — Piezo ROC Curves (one-vs-rest)", fontsize=13, pad=12)
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.legend(loc="lower right")
     plt.tight_layout()
     plt.savefig(ROC_OUT, dpi=150)
     plt.close()
-    print(f"ROC curve saved to       : {ROC_OUT}")
+    print(f"ROC curves saved to     : {ROC_OUT}")
 
 
 def cross_validate(model, X, y):
     print("\n── 5-Fold Cross Validation ───────────────────────────────────")
     cv     = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    scores = cross_val_score(model, X, y, cv=cv, scoring="f1", n_jobs=-1)
-    print(f"F1 per fold : {[f'{s:.3f}' for s in scores]}")
-    print(f"Mean F1     : {scores.mean():.3f} ± {scores.std():.3f}")
+    scores = cross_val_score(model, X, y, cv=cv, scoring="f1_macro", n_jobs=-1)
+    print(f"F1 macro per fold : {[f'{s:.3f}' for s in scores]}")
+    print(f"Mean F1 macro     : {scores.mean():.3f} ± {scores.std():.3f}")
 
 
 def print_feature_importance(model):
@@ -151,7 +167,7 @@ def print_feature_importance(model):
 
 def main():
     print("=" * 60)
-    print("  Smart Stethoscope — Heart Sound RF Training")
+    print("  Smart Stethoscope — Piezo RF Training")
     print("=" * 60 + "\n")
 
     X, y = load_data()
@@ -159,15 +175,13 @@ def main():
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-    print(f"\nTrain : {len(X_train)} windows")
-    print(f"Test  : {len(X_test)} windows")
+    print(f"\nTrain set : {len(X_train)} windows")
+    print(f"Test set  : {len(X_test)} windows")
 
-    # Scale
     scaler  = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test  = scaler.transform(X_test)
 
-    # SMOTE — balance classes on training set only
     print("\nApplying SMOTE to training set...")
     smote = SMOTE(random_state=42)
     X_train, y_train = smote.fit_resample(X_train, y_train)
@@ -183,15 +197,13 @@ def main():
     cross_validate(model, X, y)
     print_feature_importance(model)
     plot_confusion_matrix(y_test, y_pred)
-    plot_roc_curve(y_test, y_prob)
+    plot_roc_curves(model, X_test, y_test)
 
     joblib.dump(model, MODEL_OUT)
     joblib.dump(scaler, SCALER_OUT)
-    joblib.dump(THRESHOLD, THRESHOLD_OUT)
-    print(f"\nModel saved to     : {MODEL_OUT}")
-    print(f"Scaler saved to    : {SCALER_OUT}")
-    print(f"Threshold saved to : {THRESHOLD_OUT}")
-    print("Copy all three .joblib files to the Raspberry Pi when ready.")
+    print(f"\nModel saved to : {MODEL_OUT}")
+    print(f"Scaler saved to: {SCALER_OUT}")
+    print("Copy both .joblib files to the Raspberry Pi when ready.")
 
 
 if __name__ == "__main__":
