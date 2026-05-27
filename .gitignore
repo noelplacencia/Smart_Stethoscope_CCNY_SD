@@ -10,3 +10,7 @@ ml/data/
 .ipynb_checkpoints/
 .vscode/
 .DS_Store
+physionet.org/
+*.wav
+*.dat
+*.hea
