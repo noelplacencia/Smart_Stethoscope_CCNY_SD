@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Patient View</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body class="light">
+    <header>
+        <h1>Patient View</h1>
+        <span class="live">● Live</span>
+        <a href="/doctor">Doctor View</a>
+    </header>
+
+    <main class="patient-grid">
+        <section class="card status-card">
+            <h2>Health Status</h2>
+            <div id="patientStatus" class="status normal">Normal</div>
+            <p id="patientAlert">No active alerts</p>
+        </section>
+
+        <section class="card metric"><h2>Heart Rate</h2><div><span id="hr">--</span> bpm</div><p>Normal: 60–100 bpm</p></section>
+        <section class="card metric"><h2>SpO₂</h2><div><span id="spo2">--</span> %</div><p>Normal: 95–100%</p></section>
+        <section class="card metric"><h2>Respiration</h2><div><span id="resp">--</span> rpm</div><p>Normal: 12–20 rpm</p></section>
+        <section class="card metric"><h2>Temperature</h2><div><span id="temp">--</span> °C</div><p>Normal: 36.0–37.5 °C</p></section>
+
+        <section class="card wide">
+            <h2>Live ECG Activity</h2>
+            <div id="patientEcg"></div>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
