@@ -17,6 +17,10 @@ Output:
     ml/data/roc_curve_piezo.png
 """
 
+import json
+import os
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,6 +33,7 @@ from sklearn.metrics import (
     confusion_matrix,
     roc_auc_score,
     RocCurveDisplay,
+    f1_score,
 )
 from sklearn.preprocessing import label_binarize, StandardScaler
 from imblearn.over_sampling import SMOTE
@@ -39,8 +44,20 @@ MODEL_OUT    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/rf_model_piezo.jobl
 SCALER_OUT   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/scaler_piezo.joblib"
 CM_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/confusion_matrix_piezo.png"
 ROC_OUT      = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/roc_curve_piezo.png"
+METRICS_LOG  = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/metrics_log.json"
 
 LABEL_NAMES = ["normal", "crackle", "wheeze", "both"]
+
+
+def log_metrics(entry: dict):
+    log = []
+    if os.path.exists(METRICS_LOG):
+        with open(METRICS_LOG) as f:
+            log = json.load(f)
+    log.append(entry)
+    with open(METRICS_LOG, "w") as f:
+        json.dump(log, f, indent=2)
+    print(f"\nMetrics logged to: {METRICS_LOG}")
 
 
 def load_data():
@@ -87,7 +104,10 @@ def evaluate(model, X_test, y_test):
     auc   = roc_auc_score(y_bin, y_prob, multi_class="ovr", average="macro")
     print(f"Macro ROC-AUC   : {auc:.3f}")
 
-    return y_pred, y_prob
+    mean_f1 = f1_score(y_test, y_pred, average="macro")
+    print(f"Mean F1 (macro)  : {mean_f1:.3f}")
+
+    return y_pred, y_prob, acc, auc, mean_f1
 
 
 def plot_confusion_matrix(y_test, y_pred):
@@ -204,7 +224,7 @@ def main():
     model = train_model(X_train, y_train)
     print("Done.")
 
-    y_pred, y_prob = evaluate(model, X_test, y_test)
+    y_pred, y_prob, acc, auc, mean_f1 = evaluate(model, X_test, y_test)
     cross_validate(model, X, y, groups)
     print_feature_importance(model)
     plot_confusion_matrix(y_test, y_pred)
@@ -215,6 +235,17 @@ def main():
     print(f"\nModel saved to : {MODEL_OUT}")
     print(f"Scaler saved to: {SCALER_OUT}")
     print("Copy both .joblib files to the Raspberry Pi when ready.")
+
+    log_metrics({
+        "timestamp":  datetime.now().isoformat(timespec="seconds"),
+        "pipeline":   "piezo",
+        "n_features": X.shape[1],
+        "n_windows":  len(X),
+        "n_patients": int(len(set(groups))),
+        "accuracy":   round(float(acc), 4),
+        "roc_auc":    round(float(auc), 4),
+        "mean_f1":    round(float(mean_f1), 4),
+    })
 
 
 if __name__ == "__main__":

@@ -12,6 +12,10 @@ Output:
     ml/data/roc_curve_heart.png
 """
 
+import json
+import os
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -25,6 +29,7 @@ from sklearn.metrics import (
     ConfusionMatrixDisplay,
     roc_auc_score,
     RocCurveDisplay,
+    f1_score,
 )
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
@@ -37,8 +42,20 @@ THRESHOLD_OUT = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/threshold_heart.jo
 CM_OUT        = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/confusion_matrix_heart.png"
 ROC_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/roc_curve_heart.png"
 
-LABEL_NAMES = ["absent", "present"]
-THRESHOLD   = 0.3    # lower than default 0.5 — prioritises catching murmurs over false positives
+LABEL_NAMES  = ["absent", "present"]
+THRESHOLD    = 0.3    # lower than default 0.5 — prioritises catching murmurs over false positives
+METRICS_LOG  = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/metrics_log.json"
+
+
+def log_metrics(entry: dict):
+    log = []
+    if os.path.exists(METRICS_LOG):
+        with open(METRICS_LOG) as f:
+            log = json.load(f)
+    log.append(entry)
+    with open(METRICS_LOG, "w") as f:
+        json.dump(log, f, indent=2)
+    print(f"\nMetrics logged to: {METRICS_LOG}")
 
 
 def load_data():
@@ -83,7 +100,10 @@ def evaluate(model, X_test, y_test):
     print(f"Overall accuracy   : {acc:.1%}")
     print(f"ROC-AUC            : {auc:.3f}")
 
-    return y_pred, y_prob
+    mean_f1 = f1_score(y_test, y_pred, average="macro")
+    print(f"Mean F1 (macro)    : {mean_f1:.3f}")
+
+    return y_pred, y_prob, acc, auc, mean_f1
 
 
 def plot_confusion_matrix(y_test, y_pred):
@@ -182,7 +202,7 @@ def main():
     model = train_model(X_train, y_train)
     print("Done.")
 
-    y_pred, y_prob = evaluate(model, X_test, y_test)
+    y_pred, y_prob, acc, auc, mean_f1 = evaluate(model, X_test, y_test)
     cross_validate(model, X, y)
     print_feature_importance(model)
     plot_confusion_matrix(y_test, y_pred)
@@ -195,6 +215,18 @@ def main():
     print(f"Scaler saved to    : {SCALER_OUT}")
     print(f"Threshold saved to : {THRESHOLD_OUT}")
     print("Copy all three .joblib files to the Raspberry Pi when ready.")
+
+    log_metrics({
+        "timestamp":  datetime.now().isoformat(timespec="seconds"),
+        "pipeline":   "heart",
+        "n_features": X.shape[1],
+        "n_windows":  len(X),
+        "n_patients": int(len(np.unique(groups))),
+        "accuracy":   round(float(acc), 4),
+        "roc_auc":    round(float(auc), 4),
+        "mean_f1":    round(float(mean_f1), 4),
+        "threshold":  THRESHOLD,
+    })
 
 
 if __name__ == "__main__":

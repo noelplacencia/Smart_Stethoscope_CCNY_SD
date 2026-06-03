@@ -1,0 +1,14 @@
+[
+  {
+    "timestamp": "2026-06-03T00:00:00",
+    "pipeline": "heart",
+    "n_features": 20,
+    "n_windows": 41396,
+    "n_patients": 874,
+    "accuracy": 0.62,
+    "roc_auc": 0.69,
+    "mean_f1": 0.463,
+    "threshold": 0.3,
+    "notes": "GroupShuffleSplit patient-level split, SMOTE, StandardScaler, 20 features"
+  }
+]

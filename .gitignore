@@ -4,6 +4,7 @@ __pycache__/
 venv/
 .venv/
 ml/data/
+!ml/data/metrics_log.json
 *.joblib
 *.pkl
 *.h5
