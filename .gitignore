@@ -3,7 +3,7 @@ __pycache__/
 .env
 venv/
 .venv/
-ml/data/
+ml/data/*
 !ml/data/metrics_log.json
 ml/datasets/
 *.joblib

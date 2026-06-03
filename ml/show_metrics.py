@@ -23,7 +23,7 @@ def main():
         print("Metrics log is empty.")
         sys.exit(0)
 
-    header = f"{'#':<4} {'Timestamp':<22} {'Pipeline':<8} {'Features':<10} {'Windows':<9} {'Patients':<10} {'Accuracy':<10} {'ROC-AUC':<9} {'Mean F1'}"
+    header = f"{'#':<4} {'Timestamp':<22} {'Pipeline':<8} {'Model':<28} {'Features':<10} {'Windows':<9} {'Patients':<10} {'Accuracy':<10} {'ROC-AUC':<9} {'Mean F1'}"
     print("=" * len(header))
     print("  Smart Stethoscope — Model Metrics History")
     print("=" * len(header))
@@ -32,9 +32,11 @@ def main():
 
     for i, e in enumerate(log, 1):
         threshold = f"  (thr={e['threshold']})" if "threshold" in e else ""
+        model = e.get("model", "Random Forest")
+        n_features = str(e["n_features"]) if "n_features" in e else "-"
         print(
             f"{i:<4} {e['timestamp']:<22} {e['pipeline']:<8} "
-            f"{e['n_features']:<10} {e['n_windows']:<9} {e['n_patients']:<10} "
+            f"{model:<28} {n_features:<10} {e['n_windows']:<9} {e['n_patients']:<10} "
             f"{e['accuracy']:<10.1%} {e['roc_auc']:<9.3f} {e['mean_f1']:.3f}"
             f"{threshold}"
         )

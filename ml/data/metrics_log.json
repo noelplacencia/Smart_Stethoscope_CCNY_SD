@@ -10,5 +10,47 @@
     "mean_f1": 0.463,
     "threshold": 0.3,
     "notes": "GroupShuffleSplit patient-level split, SMOTE, StandardScaler, 20 features"
+  },
+  {
+    "timestamp": "2026-06-03T14:06:13",
+    "pipeline": "lung",
+    "n_features": 38,
+    "n_windows": 2995,
+    "n_patients": 92,
+    "accuracy": 0.3759,
+    "roc_auc": 0.5319,
+    "mean_f1": 0.227
+  },
+  {
+    "timestamp": "2026-06-03T14:09:22",
+    "pipeline": "piezo",
+    "n_features": 38,
+    "n_windows": 2995,
+    "n_patients": 92,
+    "accuracy": 0.369,
+    "roc_auc": 0.5296,
+    "mean_f1": 0.2379
+  },
+  {
+    "timestamp": "2026-06-03T14:19:27",
+    "pipeline": "heart",
+    "model": "Random Forest",
+    "n_features": 20,
+    "n_windows": 41396,
+    "n_patients": 874,
+    "accuracy": 0.781,
+    "roc_auc": 0.691,
+    "mean_f1": 0.6322,
+    "threshold": 0.45
+  },
+  {
+    "timestamp": "2026-06-03T15:26:04",
+    "pipeline": "lung",
+    "model": "MobileNetV2 (transfer learning)",
+    "n_windows": 2995,
+    "n_patients": 92,
+    "accuracy": 0.3909,
+    "roc_auc": 0.5713,
+    "mean_f1": 0.2866
   }
 ]
