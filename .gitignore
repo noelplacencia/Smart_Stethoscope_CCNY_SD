@@ -5,6 +5,7 @@ venv/
 .venv/
 ml/data/
 !ml/data/metrics_log.json
+ml/datasets/
 *.joblib
 *.pkl
 *.h5
