@@ -27,8 +27,8 @@ import librosa
 from scipy.signal import butter, filtfilt
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-DATA_DIR = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data"
-CSV_PATH = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data.csv"
+DATA_DIR = "/home/noel/Smart_Stethoscope_CCNY_SD/physionet.org/files/circor-heart-sound/1.0.3/training_data"
+CSV_PATH = "/home/noel/Smart_Stethoscope_CCNY_SD/physionet.org/files/circor-heart-sound/1.0.3/training_data.csv"
 OUT_CSV  = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_heart.csv"
 
 # ── DSP parameters ─────────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ def bandpass_filter(signal: np.ndarray, sr: int) -> np.ndarray:
 
 def extract_features(window: np.ndarray, sr: int) -> np.ndarray:
     """
-    17 features — identical order to extract_features.py (lung pipeline).
+    20 features per window.
 
     Features:
         0-12  MFCCs 1-13 (mean across window)
@@ -61,6 +61,9 @@ def extract_features(window: np.ndarray, sr: int) -> np.ndarray:
         14    Spectral rolloff at 85% (mean)
         15    Zero crossing rate (mean)
         16    RMS energy (mean)
+        17    Peak frequency (dominant FFT bin)
+        18    Mean amplitude
+        19    Std amplitude
     """
     mfccs      = librosa.feature.mfcc(y=window, sr=sr, n_mfcc=13)
     mfcc_means = np.mean(mfccs, axis=1)
@@ -70,8 +73,14 @@ def extract_features(window: np.ndarray, sr: int) -> np.ndarray:
     zcr      = np.mean(librosa.feature.zero_crossing_rate(y=window))
     rms      = np.mean(librosa.feature.rms(y=window))
 
-    features = np.concatenate([mfcc_means, [centroid, rolloff, zcr, rms]])
-    assert len(features) == 17, f"Expected 17 features, got {len(features)}"
+    fft_vals  = np.abs(np.fft.rfft(window))
+    freqs     = np.fft.rfftfreq(len(window), d=1 / sr)
+    peak_freq = freqs[np.argmax(fft_vals)]
+    mean_val  = np.mean(window)
+    std_val   = np.std(window)
+
+    features = np.concatenate([mfcc_means, [centroid, rolloff, zcr, rms, peak_freq, mean_val, std_val]])
+    assert len(features) == 20, f"Expected 20 features, got {len(features)}"
     return features
 
 
@@ -112,7 +121,7 @@ def main():
         pid = wav.split("_")[0]
         wav_index.setdefault(pid, []).append(wav)
 
-    all_features, all_labels = [], []
+    all_features, all_labels, all_patient_ids = [], [], []
     skipped = 0
     total_files = 0
 
@@ -133,6 +142,7 @@ def main():
                 for feats, lbl in results:
                     all_features.append(feats)
                     all_labels.append(lbl)
+                    all_patient_ids.append(pid)
                 print(f"  {wav_name:<30} {len(results):>3} windows  [{row['Murmur']}]")
                 total_files += 1
             except Exception as e:
@@ -141,10 +151,12 @@ def main():
 
     # ── Save ───────────────────────────────────────────────────────────────────
     col_names = [f"mfcc_{i+1}" for i in range(13)] + \
-                ["spectral_centroid", "spectral_rolloff", "zcr", "rms"]
+                ["spectral_centroid", "spectral_rolloff", "zcr", "rms",
+                 "peak_frequency", "mean", "std"]
 
     df_out = pd.DataFrame(all_features, columns=col_names)
-    df_out["label"] = all_labels
+    df_out["label"]      = all_labels
+    df_out["patient_id"] = all_patient_ids
     df_out.to_csv(OUT_CSV, index=False)
 
     print(f"\nDone.")

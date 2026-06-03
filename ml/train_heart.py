@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import joblib
 
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.model_selection import GroupShuffleSplit, StratifiedKFold, cross_val_score
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
@@ -43,15 +43,16 @@ THRESHOLD   = 0.3    # lower than default 0.5 — prioritises catching murmurs o
 
 def load_data():
     df = pd.read_csv(FEATURES_CSV)
-    X = df.drop(columns=["label"]).values
+    groups = df["patient_id"].values
+    X = df.drop(columns=["label", "patient_id"]).values
     y = df["label"].values
-    print(f"Loaded {len(df)} windows, {X.shape[1]} features each")
+    print(f"Loaded {len(df)} windows from {len(np.unique(groups))} patients, {X.shape[1]} features each")
     print("Class distribution:")
     for i, name in enumerate(LABEL_NAMES):
         count = np.sum(y == i)
         pct   = count / len(y) * 100
         print(f"  {name:<10} {count:>5}  ({pct:.1f}%)")
-    return X, y
+    return X, y, groups
 
 
 def train_model(X_train, y_train):
@@ -142,7 +143,8 @@ def cross_validate(model, X, y):
 def print_feature_importance(model):
     print("\n── Top 10 Most Important Features ───────────────────────────")
     feature_names = [f"mfcc_{i+1}" for i in range(13)] + \
-                    ["spectral_centroid", "spectral_rolloff", "zcr", "rms"]
+                    ["spectral_centroid", "spectral_rolloff", "zcr", "rms",
+                     "peak_frequency", "mean", "std"]
     importances = model.feature_importances_
     indices     = np.argsort(importances)[::-1][:10]
     for rank, idx in enumerate(indices, 1):
@@ -154,13 +156,14 @@ def main():
     print("  Smart Stethoscope — Heart Sound RF Training")
     print("=" * 60 + "\n")
 
-    X, y = load_data()
+    X, y, groups = load_data()
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-    print(f"\nTrain : {len(X_train)} windows")
-    print(f"Test  : {len(X_test)} windows")
+    splitter = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    train_idx, test_idx = next(splitter.split(X, y, groups))
+    X_train, X_test = X[train_idx], X[test_idx]
+    y_train, y_test = y[train_idx], y[test_idx]
+    print(f"\nTrain : {len(X_train)} windows ({len(np.unique(groups[train_idx]))} patients)")
+    print(f"Test  : {len(X_test)} windows ({len(np.unique(groups[test_idx]))} patients)")
 
     # Scale
     scaler  = StandardScaler()
