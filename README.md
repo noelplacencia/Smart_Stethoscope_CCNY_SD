@@ -1,101 +1,166 @@
-# Smart Stethoscope Dashboard
+# Smart Stethoscope
 
-Senior Design Smart Stethoscope software package.
+Wireless AI-assisted stethoscope for real-time respiratory and cardiac anomaly detection. Sensor data is processed at the edge on an ESP32, transmitted over BLE to a Raspberry Pi 4, and classified using a Random Forest model trained on the ICBHI 2017 and CirCor datasets.
 
-Architecture:
+Built for EE 59866/59868 Senior Design — The City College of New York.
 
-```text
-Sensors → ESP32-S3 → BLE → Raspberry Pi 4 → AI + Web Dashboard → Phone/Laptop/Tablet
+---
+
+## How it works
+
+```
+Sensors (MEMS mic, Piezo, ECG, SpO₂, IMU)
+    → ESP32 (filtering, DSP, feature extraction)
+        → BLE
+            → Raspberry Pi 4 (Random Forest inference)
+                → Dashboard (waveforms, anomaly flags, patient records)
 ```
 
-This package includes:
+---
 
-- ESP32-S3 BLE firmware starter
-- Raspberry Pi BLE receiver
-- Flask web dashboard
-- Doctor View
-- Patient View
-- AI alert module
-- Simulated-data mode for testing without hardware
-- GitHub-ready folder structure
+## Repository structure
 
-## Raspberry Pi Installation
+```
+smart-stethoscope/
+├── firmware/                        # Saqlain Warrris — DSP/filtering on ESP32
+│   └── main/
+│       └── main.ino
+├── rpi/                             # Jason Corona — RPi inference engine
+│   ├── ble_receiver.py
+│   ├── app.py
+│   ├── ai_alerts.py
+│   ├── config.py
+│   ├── requirements.txt
+│   ├── run.sh
+│   ├── static/
+│   └── templates/                   # Puran Chaudharry — dashboard & patient logging
+├── ml/                              # Noel Placencia — ML pipeline
+│   ├── data/                        # not committed
+│   ├── notebooks/
+│   ├── extract_features_lung.py
+│   ├── extract_features_heart.py
+│   ├── extract_features_piezo.py
+│   ├── train_lung.py
+│   ├── train_heart.py
+│   └── train_piezo.py
+├── docs/                            # Ulash Kundu Joy — hardware diagrams, reports
+├── .gitignore
+├── LICENSE
+└── README.md
+```
+
+---
+
+## Setup
+
+### ESP32 (firmware)
+
+1. Install [Arduino IDE](https://www.arduino.cc/en/software) and add ESP32 board support
+2. Install required libraries via Arduino Library Manager:
+   - `NimBLE-Arduino`
+   - `Adafruit MAX3010x`
+   - `MPU6050`
+3. Open `firmware/main/main.ino` and upload to the ESP32
+
+### Raspberry Pi (inference)
 
 ```bash
-cd raspberry_pi_dashboard
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python app.py
+pip install bleak scikit-learn numpy joblib
+python rpi/inference.py
 ```
 
-Open dashboard:
+Update `ESP32_ADDRESS` in `inference.py` with your device's BLE MAC address (find it by running `python -m bleak scan`).
 
-```text
-http://raspberrypi.local:5000
-```
-
-or use the Pi IP address:
-
-```text
-http://192.168.x.x:5000
-```
-
-## Test Without ESP32
-
-By default, the dashboard runs in simulation mode.
-
-In `raspberry_pi_dashboard/config.py`:
-
-```python
-USE_BLE = False
-```
-
-To use ESP32 BLE:
-
-```python
-USE_BLE = True
-```
-
-## ESP32 Installation
-
-1. Open `esp32_firmware/smart_stethoscope_ble.ino` in Arduino IDE.
-2. Select board: ESP32S3 Dev Module.
-3. Upload to ESP32-S3.
-4. Run Raspberry Pi dashboard with `USE_BLE = True`.
-
-## Your Contribution Statement
-
-Developed the real-time Smart Stethoscope dashboard interface, including doctor view, patient view, BLE receiver integration, AI alert display, and multi-device web access.
-
-
-## Post to GitHub
+### ML training (laptop)
 
 ```bash
-git init
+pip install librosa scipy scikit-learn imbalanced-learn numpy pandas matplotlib joblib
+
+# Lung sound model — MEMS mic (ICBHI 2017, 38 features)
+python ml/extract_features_lung.py   # → ml/data/features_lung.csv
+python ml/train_lung.py              # → ml/data/rf_model_lung.joblib, scaler_lung.joblib
+
+# Heart sound model — murmur detection (CirCor DigiScope, 17 features)
+python ml/extract_features_heart.py  # → ml/data/features_heart.csv
+python ml/train_heart.py             # → ml/data/rf_model_heart.joblib, scaler_heart.joblib
+
+# Piezo sensor model — chest wall vibration (ICBHI 2017, 38 features)
+python ml/extract_features_piezo.py  # → ml/data/features_piezo.csv
+python ml/train_piezo.py             # → ml/data/rf_model_piezo.joblib, scaler_piezo.joblib
+```
+
+Copy the `.joblib` files to the Pi before running inference.
+
+---
+
+## Datasets
+
+Datasets are **not committed** to this repo due to file size. Download them manually and place in `ml/data/`:
+
+| Dataset | Use | Link |
+|---------|-----|------|
+| ICBHI 2017 | Lung sound classification (normal, wheeze, crackle) | [bhichallenge.med.auth.gr](https://bhichallenge.med.auth.gr) |
+| CirCor DigiScope | Heart murmur detection | [physionet.org/content/circor-heart-sound](https://physionet.org/content/circor-heart-sound/1.0.3/) |
+| MIT-BIH | ECG arrhythmia classification | [physionet.org/content/mitdb](https://physionet.org/content/mitdb/1.0.0/) |
+
+---
+
+## Hardware
+
+| Component | Role | Interface |
+|-----------|------|-----------|
+| SPH0645LM4H-B (MEMS mic) | Primary heart/lung audio | I²S |
+| Ambient microphone | Noise reference for subtraction | I²S |
+| Piezo sensor | Chest wall vibration | ADC |
+| AD8232 | ECG / heart timing | ADC |
+| MAX30102 | SpO₂ and pulse rate | I²C |
+| MPU-6050 | Motion artifact detection | I²C |
+| ESP32 | Edge DSP + BLE transmission | — |
+| Raspberry Pi 4 | AI inference + dashboard | — |
+
+---
+
+## Contributing
+
+We use a branch-per-feature workflow. Never commit directly to `main`.
+
+```bash
+# Start of every session
+git checkout main
+git pull origin main
+
+# Create your branch
+git checkout -b area/what-youre-doing
+# e.g. ml/feature-extraction, firmware/ble-setup, rpi/dashboard-ui
+
+# End of session
 git add .
-git commit -m "Initial Smart Stethoscope dashboard code"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/smart-stethoscope-dashboard.git
-git push -u origin main
+git commit -m "short description of what you did"
+git push origin your-branch-name
 ```
 
-## Demo Command
+Then open a Pull Request on GitHub to merge into `main`.
 
-```bash
-cd raspberry_pi_dashboard
-source venv/bin/activate
-python app.py
-```
+### Branch naming
+- `ml/` — model training and feature extraction
+- `firmware/` — ESP32 code
+- `rpi/` — Raspberry Pi code
+- `docs/` — reports, diagrams, slides
 
-Then open:
+---
 
-```text
-http://localhost:5000
-```
+## Team
 
-For other devices on the same network, open the Raspberry Pi IP address:
+| Name | Role |
+|------|------|
+| Noel Placencia | Team Lead |
+| Ulash Kundu Joy | Hardware Lead |
+| Jason Corona | Filtering Lead|
+| Saqlain Warrris | AI Lead|
+| Puran Chaudharry | Data Lead |
 
-```text
-http://RASPBERRY_PI_IP:5000
-```
+---
+
+## License
+
+For academic use only. Not intended for clinical deployment.
