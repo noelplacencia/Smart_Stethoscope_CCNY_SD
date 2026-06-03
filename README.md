@@ -22,28 +22,30 @@ Sensors (MEMS mic, Piezo, ECG, SpO₂, IMU)
 
 ```
 smart-stethoscope/
-├── firmware/                # ESP32 Arduino code
+├── firmware/                        # Saqlain Warrris — DSP/filtering on ESP32
 │   └── main/
-│       └── main.ino         # Sensor collection, DSP, BLE transmission
-├── rpi/                     # Raspberry Pi Python code
-│   ├── inference.py         # BLE (Bluetooth) receiver + RF (Recieved Feature) model inference
-│   └── dashboard.py         # Real-time display and patient logging
-├── ml/                      # Model training pipeline
-│   ├── data/                # Not committed — see Datasets section below
-│   │   ├── rf_model_lung.joblib       # Trained lung RF model
-│   │   ├── rf_model_heart.joblib      # Trained heart RF model
-│   │   ├── rf_model_piezo.joblib      # Trained piezo RF model
-│   │   ├── scaler_lung.joblib         # StandardScaler for lung features
-│   │   ├── scaler_heart.joblib        # StandardScaler for heart features
-│   │   └── scaler_piezo.joblib        # StandardScaler for piezo features
-│   ├── notebooks/           # Exploratory analysis
-│   ├── extract_features_lung.py   # 38-feature extraction — ICBHI lung sounds (MEMS mic)
-│   ├── extract_features_heart.py  # 17-feature extraction — CirCor heart sounds
-│   ├── extract_features_piezo.py  # 38-feature extraction — ICBHI lung sounds (piezo sensor)
-│   ├── train_lung.py              # Train and evaluate lung RF classifier
-│   ├── train_heart.py             # Train and evaluate heart RF classifier
-│   └── train_piezo.py             # Train and evaluate piezo RF classifier
-├── docs/                    # Diagrams, reports, presentations
+│       └── main.ino
+├── rpi/                             # Jason Corona — RPi inference engine
+│   ├── ble_receiver.py
+│   ├── app.py
+│   ├── ai_alerts.py
+│   ├── config.py
+│   ├── requirements.txt
+│   ├── run.sh
+│   ├── static/
+│   └── templates/                   # Puran Chaudharry — dashboard & patient logging
+├── ml/                              # Noel Placencia — ML pipeline
+│   ├── data/                        # not committed
+│   ├── notebooks/
+│   ├── extract_features_lung.py
+│   ├── extract_features_heart.py
+│   ├── extract_features_piezo.py
+│   ├── train_lung.py
+│   ├── train_heart.py
+│   └── train_piezo.py
+├── docs/                            # Ulash Kundu Joy — hardware diagrams, reports
+├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
