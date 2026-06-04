@@ -33,7 +33,8 @@ from sklearn.preprocessing import label_binarize, StandardScaler
 from imblearn.over_sampling import SMOTE
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-FEATURES_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_lung.csv"
+FEATURES_CSV    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_lung.csv"
+FEATURES_HF_CSV = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/features_hf_lung.csv"
 MODEL_OUT    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/rf_model_lung.joblib"
 SCALER_OUT   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/scaler_lung.joblib"
 CM_OUT       = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/plots/confusion_matrix_lung.png"
@@ -48,7 +49,11 @@ def log_metrics(entry: dict):
     log = []
     if os.path.exists(METRICS_LOG):
         with open(METRICS_LOG) as f:
-            log = json.load(f)
+            try:
+                log = json.load(f)
+            except json.JSONDecodeError:
+                print("Warning: metrics_log.json was malformed — starting fresh")
+                log = []
     log.append(entry)
     with open(METRICS_LOG, "w") as f:
         json.dump(log, f, indent=2)
@@ -56,10 +61,16 @@ def log_metrics(entry: dict):
 
 
 def load_data():
-    df = pd.read_csv(FEATURES_CSV)
+    dfs = [pd.read_csv(FEATURES_CSV)]
+    if os.path.exists(FEATURES_HF_CSV):
+        hf = pd.read_csv(FEATURES_HF_CSV)
+        dfs.append(hf)
+        print(f"HF_Lung_V1 features found — merging ({len(hf)} windows)")
+    df = pd.concat(dfs, ignore_index=True)
+
     X      = df.drop(columns=["label", "patient_id"]).values
     y      = df["label"].values
-    groups = df["patient_id"].values
+    groups = df["patient_id"].astype(str).values
     print(f"Loaded {len(df)} windows, {X.shape[1]} features each")
     print(f"Unique patients: {df['patient_id'].nunique()}")
     print(f"Class distribution:")

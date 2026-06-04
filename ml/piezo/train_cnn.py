@@ -30,7 +30,8 @@ DATA_DIR    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/datasets/icbhi"
 MODEL_OUT   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/cnn_model_piezo.pth"
 CM_OUT      = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/plots/confusion_matrix_piezo_cnn.png"
 METRICS_LOG = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/metrics_log.json"
-MEL_CACHE   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/mel_cache_icbhi.npz"
+MEL_CACHE    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/mel_cache_icbhi.npz"
+MEL_CACHE_HF = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/mel_cache_hf.npz"
 
 # ── Audio/spectrogram parameters ───────────────────────────────────────────────
 TARGET_SR  = 16000
@@ -48,6 +49,7 @@ EPOCHS_P1  = 15    # phase 1: classifier head only
 EPOCHS_P2  = 20    # phase 2: last 4 blocks + head
 LR_P1      = 1e-3
 LR_P2      = 1e-4
+PATIENCE   = 5     # early stopping: epochs without AUC improvement before halt
 LABEL_NAMES = ["normal", "crackle", "wheeze", "both"]
 
 
@@ -88,25 +90,27 @@ def freq_mask(mel, max_f=8):
 # ── Dataset ────────────────────────────────────────────────────────────────────
 
 class ICBHIDataset(Dataset):
-    def __init__(self, samples, augment=False):
-        self.samples = samples
+    """Wraps shared numpy arrays + an index list — no mel data is ever copied."""
+    def __init__(self, mels, labels, indices, augment=False):
+        self.mels    = mels
+        self.labels  = labels
+        self.indices = indices
         self.augment = augment
 
     def __len__(self):
-        return len(self.samples)
+        return len(self.indices)
 
-    def __getitem__(self, idx):
-        mel = self.samples[idx]["mel"].copy()   # (N_MELS, T)
-        label = self.samples[idx]["label"]
+    def __getitem__(self, i):
+        idx   = self.indices[i]
+        mel   = self.mels[idx].copy()
+        label = int(self.labels[idx])
 
         if self.augment:
             mel = time_mask(mel)
             mel = freq_mask(mel)
 
-        # Per-sample standardisation
         mel = (mel - mel.mean()) / (mel.std() + 1e-8)
 
-        # (N_MELS, T) → (1, N_MELS, T) → resize (1, 224, 224) → (3, 224, 224)
         t = torch.tensor(mel, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
         t = torch.nn.functional.interpolate(
             t, size=(IMG_SIZE, IMG_SIZE), mode="bilinear", align_corners=False
@@ -134,21 +138,18 @@ def parse_annotation(txt_path):
 
 def load_all_samples():
     """
-    Parse ICBHI, extract mel-spectrograms for all 3-second sliding windows.
-    Results are cached to MEL_CACHE so subsequent runs skip the ~10-min audio scan.
+    Returns (mels, labels, patient_ids) as numpy arrays.
+    Builds and caches mel spectrograms from ICBHI on first run, then merges
+    HF_Lung_V1 cache if present. No Python dicts — all data stays in arrays.
     """
     if os.path.exists(MEL_CACHE):
         print(f"Loading cached mel spectrograms from {MEL_CACHE} ...")
-        cache = np.load(MEL_CACHE)
-        mels       = cache["mels"]
-        labels_arr = cache["labels"]
-        pat_ids    = cache["patient_ids"]
-        samples = [
-            {"mel": mels[i], "label": int(labels_arr[i]), "patient_id": pat_ids[i]}
-            for i in range(len(mels))
-        ]
+        cache       = np.load(MEL_CACHE)
+        mels        = cache["mels"]
+        labels      = cache["labels"]
+        patient_ids = cache["patient_ids"]
     else:
-        samples   = []
+        mel_list, label_list, pat_list = [], [], []
         wav_files = sorted(f for f in os.listdir(DATA_DIR) if f.endswith(".wav"))
         win_sz    = int(WINDOW_SEC * TARGET_SR)
         hop_sz    = int(HOP_SEC * TARGET_SR)
@@ -159,7 +160,6 @@ def load_all_samples():
             wav_path   = os.path.join(DATA_DIR, wav_name)
             txt_path   = os.path.join(DATA_DIR, base + ".txt")
             patient_id = wav_name.split("_")[0]
-
             if not os.path.exists(txt_path):
                 continue
             try:
@@ -168,37 +168,42 @@ def load_all_samples():
             except Exception as e:
                 print(f"  [SKIP] {wav_name}: {e}")
                 continue
-
             for start, end, label in parse_annotation(txt_path):
                 start_s = int(start * TARGET_SR)
                 end_s   = int(end   * TARGET_SR)
                 cycle   = audio[start_s:end_s]
                 i = 0
                 while i + win_sz <= len(cycle):
-                    window = cycle[i:i + win_sz]
-                    samples.append({
-                        "mel":        audio_to_mel(window),
-                        "label":      label,
-                        "patient_id": patient_id,
-                    })
+                    mel_list.append(audio_to_mel(cycle[i:i + win_sz]))
+                    label_list.append(label)
+                    pat_list.append(patient_id)
                     i += hop_sz
-
             if (idx + 1) % 100 == 0:
                 print(f"  {idx+1}/{len(wav_files)} files processed ...")
 
+        mels        = np.array(mel_list,   dtype=np.float32)
+        labels      = np.array(label_list, dtype=np.int32)
+        patient_ids = np.array(pat_list)
+        del mel_list, label_list, pat_list
         os.makedirs(os.path.dirname(MEL_CACHE), exist_ok=True)
-        np.savez(MEL_CACHE,
-                 mels=np.array([s["mel"] for s in samples], dtype=np.float32),
-                 labels=np.array([s["label"] for s in samples], dtype=np.int32),
-                 patient_ids=np.array([s["patient_id"] for s in samples]))
+        np.savez(MEL_CACHE, mels=mels, labels=labels, patient_ids=patient_ids)
         print(f"Cache saved to {MEL_CACHE}")
 
-    print(f"Loaded {len(samples)} windows from "
-          f"{len(set(s['patient_id'] for s in samples))} patients")
+    # Merge HF_Lung_V1 mel cache if present
+    if os.path.exists(MEL_CACHE_HF):
+        print(f"Loading HF_Lung_V1 mel cache from {MEL_CACHE_HF} ...")
+        hf          = np.load(MEL_CACHE_HF)
+        mels        = np.concatenate([mels,        hf["mels"]],        axis=0)
+        labels      = np.concatenate([labels,      hf["labels"]],      axis=0)
+        patient_ids = np.concatenate([patient_ids, hf["patient_ids"]], axis=0)
+        print(f"  Added {len(hf['mels'])} HF windows")
+
+    n = len(mels)
+    print(f"Loaded {n} windows from {len(set(patient_ids))} patients")
     for i, name in enumerate(LABEL_NAMES):
-        count = sum(1 for s in samples if s["label"] == i)
-        print(f"  {name:<10} {count:>5}  ({count/len(samples):.1%})")
-    return samples
+        count = int((labels == i).sum())
+        print(f"  {name:<10} {count:>5}  ({count/n:.1%})")
+    return mels, labels, patient_ids
 
 
 # ── Model ──────────────────────────────────────────────────────────────────────
@@ -298,7 +303,11 @@ def log_metrics(entry):
     log = []
     if os.path.exists(METRICS_LOG):
         with open(METRICS_LOG) as f:
-            log = json.load(f)
+            try:
+                log = json.load(f)
+            except json.JSONDecodeError:
+                print("Warning: metrics_log.json was malformed — starting fresh")
+                log = []
     log.append(entry)
     with open(METRICS_LOG, "w") as f:
         json.dump(log, f, indent=2)
@@ -315,28 +324,25 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}\n")
 
-    samples     = load_all_samples()
-    patient_ids = np.array([s["patient_id"] for s in samples])
-    labels      = np.array([s["label"]      for s in samples])
+    mels, labels, patient_ids = load_all_samples()
 
     # Patient-level 80/20 split
     gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-    train_idx, test_idx = next(gss.split(samples, labels, groups=patient_ids))
+    train_idx, test_idx = next(gss.split(mels, labels, groups=patient_ids))
 
     class_weights = compute_class_weight(
         "balanced", classes=np.arange(4), y=labels[train_idx]
     )
     print(f"Class weights: {np.round(class_weights, 2)}")
 
-    train_samples = [samples[i] for i in train_idx]
-    test_samples  = [samples[i] for i in test_idx]
-    train_pats    = len(set(patient_ids[train_idx]))
-    test_pats     = len(set(patient_ids[test_idx]))
-    print(f"\nTrain : {len(train_samples)} windows ({train_pats} patients)")
-    print(f"Test  : {len(test_samples)} windows ({test_pats} patients)")
+    train_pats = len(set(patient_ids[train_idx]))
+    test_pats  = len(set(patient_ids[test_idx]))
+    print(f"\nTrain : {len(train_idx)} windows ({train_pats} patients)")
+    print(f"Test  : {len(test_idx)} windows ({test_pats} patients)")
 
-    train_set    = ICBHIDataset(train_samples, augment=True)
-    test_set     = ICBHIDataset(test_samples,  augment=False)
+    # Datasets share the same mels/labels arrays — no copies made
+    train_set = ICBHIDataset(mels, labels, train_idx, augment=True)
+    test_set  = ICBHIDataset(mels, labels, test_idx,  augment=False)
     train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True,  num_workers=0)
     test_loader  = DataLoader(test_set,  batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
@@ -364,6 +370,7 @@ def main():
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS_P2)
     best_auc, best_state = 0.0, None
+    no_improve = 0
 
     for epoch in range(1, EPOCHS_P2 + 1):
         loss, _ = train_one_epoch(model, train_loader, optimizer, criterion, device)
@@ -375,9 +382,17 @@ def main():
         if auc > best_auc:
             best_auc   = auc
             best_state = {k: v.clone() for k, v in model.state_dict().items()}
+            torch.save(best_state, MODEL_OUT)
+            print(f"    ↑ new best — checkpoint saved")
+            no_improve = 0
+        else:
+            no_improve += 1
+            if no_improve >= PATIENCE:
+                print(f"  Early stop: {PATIENCE} epochs without AUC improvement.")
+                break
 
     # Load best checkpoint (by ROC-AUC)
-    model.load_state_dict(best_state)
+    model.load_state_dict(torch.load(MODEL_OUT, map_location=device))
     print(f"\nBest ROC-AUC during phase 2: {best_auc:.3f}")
 
     # ── Final evaluation ───────────────────────────────────────────────────────
@@ -410,7 +425,7 @@ def main():
         "timestamp":  datetime.now().isoformat(timespec="seconds"),
         "pipeline":   "piezo",
         "model":      "MobileNetV2 (transfer learning)",
-        "n_windows":  len(samples),
+        "n_windows":  len(mels),
         "n_patients": int(len(set(patient_ids))),
         "accuracy":   round(acc,     4),
         "roc_auc":    round(auc,     4),

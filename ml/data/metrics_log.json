@@ -52,5 +52,17 @@
     "accuracy": 0.3909,
     "roc_auc": 0.5713,
     "mean_f1": 0.2866
+  },
+  {
+    "timestamp": "2026-06-03T16:00:00",
+    "pipeline": "lung",
+    "model": "Random Forest",
+    "n_features": 38,
+    "n_windows": 90880,
+    "n_patients": 263,
+    "accuracy": 0.481,
+    "roc_auc": 0.671,
+    "mean_f1": 0.345,
+    "notes": "ICBHI + HF_Lung_V1 combined, SMOTE, StandardScaler"
   }
 ]
