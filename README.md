@@ -1,6 +1,6 @@
 # Smart Stethoscope
 
-Wireless AI-assisted stethoscope for real-time respiratory and cardiac anomaly detection. Sensor data is processed at the edge on an ESP32, transmitted over BLE to a Raspberry Pi 4, and classified using a Random Forest model trained on the ICBHI 2017 and CirCor datasets.
+Wireless AI-assisted stethoscope for real-time respiratory and cardiac anomaly detection. Audio is captured by a MEMS microphone, transmitted over BLE from an ESP32 to a Raspberry Pi 4, and classified using machine learning models trained on the ICBHI 2017, HF_Lung_V1, and CirCor DigiScope datasets.
 
 Built for EE 59866/59868 Senior Design — The City College of New York.
 
@@ -9,12 +9,15 @@ Built for EE 59866/59868 Senior Design — The City College of New York.
 ## How it works
 
 ```
-Sensors (MEMS mic, Piezo, ECG, SpO₂, IMU)
-    → ESP32 (filtering, DSP, feature extraction)
-        → BLE
-            → Raspberry Pi 4 (Random Forest inference)
-                → Dashboard (waveforms, anomaly flags, patient records)
+SPH0645 MEMS mic (heart/lung audio)
+    → ESP32 (DSP filtering, BLE transmission)
+        → Raspberry Pi 4 (ML inference)
+            → Dashboard (waveforms, anomaly flags, patient records)
 ```
+
+**Two inference modes:**
+- **Lung mode** — classifies respiratory sounds as normal, crackle, wheeze, or both
+- **Heart mode** — detects presence of cardiac murmur
 
 ---
 
@@ -35,14 +38,22 @@ smart-stethoscope/
 │   ├── static/
 │   └── templates/                   # Puran Chaudharry — dashboard & patient logging
 ├── ml/                              # Noel Placencia — ML pipeline
-│   ├── data/                        # not committed
-│   ├── notebooks/
-│   ├── extract_features_lung.py
-│   ├── extract_features_heart.py
-│   ├── extract_features_piezo.py
-│   ├── train_lung.py
-│   ├── train_heart.py
-│   └── train_piezo.py
+│   ├── heart/
+│   │   ├── extract_features.py      # CirCor feature extraction (20 features)
+│   │   └── train.py                 # Random Forest — murmur detection
+│   ├── lung/
+│   │   ├── extract_features.py      # ICBHI feature extraction (38 features)
+│   │   ├── extract_features_hf.py   # HF_Lung_V1 feature extraction
+│   │   ├── extract_mels_hf.py       # HF_Lung_V1 mel spectrogram extraction
+│   │   ├── train.py                 # Random Forest — lung sound classification
+│   │   └── train_cnn.py             # MobileNetV2 CNN — lung sound classification
+│   ├── piezo/
+│   │   ├── extract_features.py
+│   │   ├── train.py
+│   │   └── train_cnn.py
+│   ├── data/                        # not committed (models, caches, plots)
+│   ├── datasets/                    # not committed (raw audio datasets)
+│   └── show_metrics.py
 ├── docs/                            # Ulash Kundu Joy — hardware diagrams, reports
 ├── .gitignore
 ├── LICENSE
@@ -59,7 +70,7 @@ smart-stethoscope/
 2. Install required libraries via Arduino Library Manager:
    - `NimBLE-Arduino`
    - `Adafruit MAX3010x`
-   - `MPU6050`
+   - `BMI270`
 3. Open `firmware/main/main.ino` and upload to the ESP32
 
 ### Raspberry Pi (inference)
@@ -69,39 +80,64 @@ pip install bleak scikit-learn numpy joblib
 python rpi/inference.py
 ```
 
-Update `ESP32_ADDRESS` in `inference.py` with your device's BLE MAC address (find it by running `python -m bleak scan`).
+Update `ESP32_ADDRESS` in `inference.py` with your device's BLE MAC address (find it with `python -m bleak scan`).
 
-### ML training (laptop)
+### ML training
 
 ```bash
-pip install librosa scipy scikit-learn imbalanced-learn numpy pandas matplotlib joblib
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-# Lung sound model — MEMS mic (ICBHI 2017, 38 features)
-python ml/extract_features_lung.py   # → ml/data/features_lung.csv
-python ml/train_lung.py              # → ml/data/rf_model_lung.joblib, scaler_lung.joblib
-
-# Heart sound model — murmur detection (CirCor DigiScope, 17 features)
-python ml/extract_features_heart.py  # → ml/data/features_heart.csv
-python ml/train_heart.py             # → ml/data/rf_model_heart.joblib, scaler_heart.joblib
-
-# Piezo sensor model — chest wall vibration (ICBHI 2017, 38 features)
-python ml/extract_features_piezo.py  # → ml/data/features_piezo.csv
-python ml/train_piezo.py             # → ml/data/rf_model_piezo.joblib, scaler_piezo.joblib
+pip install torch torchvision librosa scipy scikit-learn imbalanced-learn \
+            numpy pandas matplotlib joblib
 ```
 
-Copy the `.joblib` files to the Pi before running inference.
+**Lung sound model** (MEMS mic — ICBHI 2017 + HF_Lung_V1, 4-class):
+```bash
+# Random Forest
+python ml/lung/extract_features.py      # → ml/data/features_lung.csv
+python ml/lung/extract_features_hf.py   # → ml/data/features_hf_lung.csv
+python ml/lung/train.py                 # → ml/data/rf_model_lung.joblib
+
+# CNN (MobileNetV2 transfer learning)
+python ml/lung/extract_mels_hf.py       # → ml/data/mel_cache_hf.npz
+python ml/lung/train_cnn.py             # → ml/data/cnn_model_lung.pth
+```
+
+**Heart sound model** (MEMS mic — CirCor DigiScope, binary murmur detection):
+```bash
+python ml/heart/extract_features.py    # → ml/data/features_heart.csv
+python ml/heart/train.py               # → ml/data/rf_model_heart.joblib
+```
+
+Copy the `.joblib` / `.pth` model files to the Pi before running inference.
+
+---
+
+## Model results
+
+| Pipeline | Model | Dataset | Accuracy | ROC-AUC |
+|----------|-------|---------|----------|---------|
+| Heart | Random Forest | CirCor DigiScope | 78.1% | 0.691 |
+| Lung | Random Forest | ICBHI + HF_Lung_V1 | 48.1% | 0.671 |
+| Lung | MobileNetV2 CNN | ICBHI + HF_Lung_V1 | — | 0.687* |
+
+*CNN training in progress — best checkpoint so far.
+
+Lung classification is a 4-class problem (normal / crackle / wheeze / both) against a heavily imbalanced dataset — ROC-AUC is the primary metric.
 
 ---
 
 ## Datasets
 
-Datasets are **not committed** to this repo due to file size. Download them manually and place in `ml/data/`:
+Datasets are **not committed** to this repo due to file size. Download and place in `ml/datasets/`:
 
 | Dataset | Use | Link |
 |---------|-----|------|
-| ICBHI 2017 | Lung sound classification (normal, wheeze, crackle) | [bhichallenge.med.auth.gr](https://bhichallenge.med.auth.gr) |
+| ICBHI 2017 | Lung sound classification | [bhichallenge.med.auth.gr](https://bhichallenge.med.auth.gr) |
+| HF_Lung_V1 | Additional lung sounds (171 patients) | [Hugging Face](https://huggingface.co/datasets/Stethoscope/HF_Lung_V1) |
 | CirCor DigiScope | Heart murmur detection | [physionet.org/content/circor-heart-sound](https://physionet.org/content/circor-heart-sound/1.0.3/) |
-| MIT-BIH | ECG arrhythmia classification | [physionet.org/content/mitdb](https://physionet.org/content/mitdb/1.0.0/) |
 
 ---
 
@@ -109,14 +145,16 @@ Datasets are **not committed** to this repo due to file size. Download them manu
 
 | Component | Role | Interface |
 |-----------|------|-----------|
-| SPH0645LM4H-B (MEMS mic) | Primary heart/lung audio | I²S |
-| Ambient microphone | Noise reference for subtraction | I²S |
-| Piezo sensor | Chest wall vibration | ADC |
+| SPH0645LM4H-B (MEMS mic) | Primary heart/lung audio capture | I²S |
+| INMP441 (ambient mic) | Noise reference | I²S |
+| Murata 7BB-27-4L0 (piezo ×2) | Chest wall vibration | ADC |
 | AD8232 | ECG / heart timing | ADC |
 | MAX30102 | SpO₂ and pulse rate | I²C |
-| MPU-6050 | Motion artifact detection | I²C |
+| BMI270 | Motion artifact detection | I²C |
+| DS18B20 | Body temperature | 1-Wire |
+| SEN0297 | Chest pressure | ADC |
 | ESP32 | Edge DSP + BLE transmission | — |
-| Raspberry Pi 4 | AI inference + dashboard | — |
+| Raspberry Pi 4 | ML inference + dashboard | — |
 
 ---
 
@@ -155,8 +193,8 @@ Then open a Pull Request on GitHub to merge into `main`.
 |------|------|
 | Noel Placencia | Team Lead |
 | Ulash Kundu Joy | Hardware Lead |
-| Jason Corona | Filtering Lead|
-| Saqlain Warrris | AI Lead|
+| Jason Corona | Filtering Lead |
+| Saqlain Warrris | AI Lead |
 | Puran Chaudharry | Data Lead |
 
 ---
