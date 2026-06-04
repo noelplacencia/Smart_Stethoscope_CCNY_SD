@@ -11,6 +11,7 @@ ml/datasets/
 *.h5
 .ipynb_checkpoints/
 .vscode/
+.claude/
 .DS_Store
 physionet.org/
 *.wav
