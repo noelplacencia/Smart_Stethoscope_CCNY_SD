@@ -125,9 +125,15 @@ def cross_validate_model(clf_pipeline, X, y, groups):
 
 def print_feature_importance(model, name):
     print(f"\n── Top 10 Features — {name} ──────────────────────────────")
-    feature_names = [f"mfcc_{i+1}" for i in range(13)] + \
-                    ["spectral_centroid", "spectral_rolloff", "zcr", "rms",
-                     "peak_frequency", "mean", "std"]
+    feature_names = (
+        [f"mfcc_{i+1}"    for i in range(13)] +
+        [f"mfcc_d_{i+1}"  for i in range(13)] +
+        [f"mfcc_d2_{i+1}" for i in range(13)] +
+        ["spectral_centroid", "spectral_rolloff", "zcr", "rms",
+         "peak_frequency", "mean", "std"] +
+        ["band_e_low", "band_e_mid", "band_e_high", "band_e_ratio"] +
+        ["shannon_mean", "shannon_std", "shannon_max"]
+    )
     importances = model.feature_importances_
     indices = np.argsort(importances)[::-1][:10]
     for rank, idx in enumerate(indices, 1):

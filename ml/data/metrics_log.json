@@ -84,5 +84,17 @@
     "accuracy": 0.4291,
     "roc_auc": 0.6794,
     "mean_f1": 0.3456
+  },
+  {
+    "timestamp": "2026-06-05T11:41:37",
+    "pipeline": "heart",
+    "model": "Ensemble",
+    "n_features": 53,
+    "n_windows": 41396,
+    "n_patients": 874,
+    "accuracy": 0.7952,
+    "roc_auc": 0.696,
+    "mean_f1": 0.6342,
+    "threshold": 0.53
   }
 ]
