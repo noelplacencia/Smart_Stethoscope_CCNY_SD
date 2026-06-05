@@ -49,7 +49,6 @@ EPOCHS_P1   = 15
 EPOCHS_P2   = 20
 LR_P1       = 1e-3
 LR_P2       = 1e-4
-PATIENCE    = 5
 LABEL_MAP   = {"Absent": 0, "Present": 1}
 LABEL_NAMES = ["absent", "present"]
 
@@ -367,8 +366,7 @@ def main():
         filter(lambda p: p.requires_grad, model.parameters()), lr=LR_P2
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS_P2)
-    best_auc, best_state = 0.0, None
-    no_improve = 0
+    best_auc = 0.0
 
     for epoch in range(1, EPOCHS_P2 + 1):
         loss, _ = train_one_epoch(model, train_loader, optimizer, criterion, device)
@@ -378,16 +376,9 @@ def main():
         print(f"  Epoch {epoch:02d}/{EPOCHS_P2}  loss={loss:.4f}  "
               f"acc={acc:.3f}  auc={auc:.3f}  f1={mean_f1:.3f}")
         if auc > best_auc:
-            best_auc   = auc
-            best_state = {k: v.clone() for k, v in model.state_dict().items()}
-            torch.save(best_state, MODEL_OUT)
+            best_auc = auc
+            torch.save({k: v.clone() for k, v in model.state_dict().items()}, MODEL_OUT)
             print(f"    ↑ new best — checkpoint saved")
-            no_improve = 0
-        else:
-            no_improve += 1
-            if no_improve >= PATIENCE:
-                print(f"  Early stop: {PATIENCE} epochs without AUC improvement.")
-                break
 
     model.load_state_dict(torch.load(MODEL_OUT, map_location=device))
     print(f"\nBest ROC-AUC during phase 2: {best_auc:.3f}")

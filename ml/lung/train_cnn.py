@@ -49,7 +49,6 @@ EPOCHS_P1  = 15    # phase 1: classifier head only
 EPOCHS_P2  = 20    # phase 2: last 4 blocks + head
 LR_P1      = 1e-3
 LR_P2      = 1e-4
-PATIENCE   = 5     # early stopping: epochs without AUC improvement before halt
 LABEL_NAMES = ["normal", "crackle", "wheeze", "both"]
 
 
@@ -71,7 +70,7 @@ def audio_to_mel(audio):
 
 # ── SpecAugment ────────────────────────────────────────────────────────────────
 
-def time_mask(mel, max_t=25):
+def time_mask(mel, max_t=15):
     T = mel.shape[1]
     t = np.random.randint(1, max_t + 1)
     t0 = np.random.randint(0, max(1, T - t))
@@ -79,7 +78,7 @@ def time_mask(mel, max_t=25):
     return mel
 
 
-def freq_mask(mel, max_f=12):
+def freq_mask(mel, max_f=8):
     F = mel.shape[0]
     f = np.random.randint(1, max_f + 1)
     f0 = np.random.randint(0, max(1, F - f))
@@ -107,8 +106,6 @@ class ICBHIDataset(Dataset):
 
         if self.augment:
             mel = time_mask(mel)
-            mel = time_mask(mel)
-            mel = freq_mask(mel)
             mel = freq_mask(mel)
 
         mel = (mel - mel.mean()) / (mel.std() + 1e-8)
@@ -371,8 +368,7 @@ def main():
         filter(lambda p: p.requires_grad, model.parameters()), lr=LR_P2
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS_P2)
-    best_auc, best_state = 0.0, None
-    no_improve = 0
+    best_auc = 0.0
 
     for epoch in range(1, EPOCHS_P2 + 1):
         loss, _ = train_one_epoch(model, train_loader, optimizer, criterion, device)
@@ -382,18 +378,10 @@ def main():
         print(f"  Epoch {epoch:02d}/{EPOCHS_P2}  loss={loss:.4f}  "
               f"acc={acc:.3f}  auc={auc:.3f}  f1={mean_f1:.3f}")
         if auc > best_auc:
-            best_auc   = auc
-            best_state = {k: v.clone() for k, v in model.state_dict().items()}
-            torch.save(best_state, MODEL_OUT)
+            best_auc = auc
+            torch.save({k: v.clone() for k, v in model.state_dict().items()}, MODEL_OUT)
             print(f"    ↑ new best — checkpoint saved")
-            no_improve = 0
-        else:
-            no_improve += 1
-            if no_improve >= PATIENCE:
-                print(f"  Early stop: {PATIENCE} epochs without AUC improvement.")
-                break
 
-    # Load best checkpoint (by ROC-AUC)
     model.load_state_dict(torch.load(MODEL_OUT, map_location=device))
     print(f"\nBest ROC-AUC during phase 2: {best_auc:.3f}")
 
