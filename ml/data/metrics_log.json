@@ -64,5 +64,25 @@
     "roc_auc": 0.671,
     "mean_f1": 0.345,
     "notes": "ICBHI + HF_Lung_V1 combined, SMOTE, StandardScaler"
+  },
+  {
+    "timestamp": "2026-06-05T09:36:01",
+    "pipeline": "lung",
+    "model": "MobileNetV2 (transfer learning)",
+    "n_windows": 90880,
+    "n_patients": 263,
+    "accuracy": 0.4352,
+    "roc_auc": 0.6793,
+    "mean_f1": 0.355
+  },
+  {
+    "timestamp": "2026-06-05T10:19:26",
+    "pipeline": "piezo",
+    "model": "MobileNetV2 (transfer learning)",
+    "n_windows": 90880,
+    "n_patients": 263,
+    "accuracy": 0.4291,
+    "roc_auc": 0.6794,
+    "mean_f1": 0.3456
   }
 ]
