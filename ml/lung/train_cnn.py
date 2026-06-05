@@ -68,6 +68,21 @@ def audio_to_mel(audio):
     return librosa.power_to_db(mel, ref=np.max)   # (N_MELS, T)
 
 
+# ── Focal Loss ────────────────────────────────────────────────────────────────
+
+class FocalLoss(nn.Module):
+    """Focal loss: down-weights easy negatives to focus training on hard cases."""
+    def __init__(self, weight=None, gamma=2.0):
+        super().__init__()
+        self.weight = weight
+        self.gamma  = gamma
+
+    def forward(self, inputs, targets):
+        ce  = nn.functional.cross_entropy(inputs, targets, weight=self.weight, reduction="none")
+        pt  = torch.exp(-ce)
+        return ((1 - pt) ** self.gamma * ce).mean()
+
+
 # ── SpecAugment ────────────────────────────────────────────────────────────────
 
 def time_mask(mel, max_t=15):
@@ -347,7 +362,7 @@ def main():
 
     model     = build_model(n_classes=4).to(device)
     w_tensor  = torch.tensor(class_weights, dtype=torch.float32).to(device)
-    criterion = nn.CrossEntropyLoss(weight=w_tensor)
+    criterion = FocalLoss(weight=w_tensor, gamma=2.0)
 
     # ── Phase 1: classifier head only ─────────────────────────────────────────
     print(f"\n── Phase 1: classifier head ({EPOCHS_P1} epochs) ──────────────")
@@ -414,7 +429,7 @@ def main():
     log_metrics({
         "timestamp":  datetime.now().isoformat(timespec="seconds"),
         "pipeline":   "lung",
-        "model":      "MobileNetV2 (transfer learning)",
+        "model":      "MobileNetV2 (transfer learning, focal loss)",
         "n_windows":  len(mels),
         "n_patients": int(len(set(patient_ids))),
         "accuracy":   round(acc,     4),
