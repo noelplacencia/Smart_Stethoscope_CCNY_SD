@@ -71,7 +71,7 @@ def audio_to_mel(audio):
 
 # ── SpecAugment ────────────────────────────────────────────────────────────────
 
-def time_mask(mel, max_t=15):
+def time_mask(mel, max_t=25):
     T = mel.shape[1]
     t = np.random.randint(1, max_t + 1)
     t0 = np.random.randint(0, max(1, T - t))
@@ -79,7 +79,7 @@ def time_mask(mel, max_t=15):
     return mel
 
 
-def freq_mask(mel, max_f=8):
+def freq_mask(mel, max_f=12):
     F = mel.shape[0]
     f = np.random.randint(1, max_f + 1)
     f0 = np.random.randint(0, max(1, F - f))
@@ -107,6 +107,8 @@ class ICBHIDataset(Dataset):
 
         if self.augment:
             mel = time_mask(mel)
+            mel = time_mask(mel)
+            mel = freq_mask(mel)
             mel = freq_mask(mel)
 
         mel = (mel - mel.mean()) / (mel.std() + 1e-8)

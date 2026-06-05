@@ -31,12 +31,12 @@ CSV_PATH    = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/datasets/circor/training_
 MODEL_OUT   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/cnn_model_heart.pth"
 CM_OUT      = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/plots/confusion_matrix_heart_cnn.png"
 METRICS_LOG = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/metrics_log.json"
-MEL_CACHE   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/mel_cache_heart.npz"
+MEL_CACHE   = "/home/noel/Smart_Stethoscope_CCNY_SD/ml/data/mel_cache_heart_5s.npz"
 
 # ── Audio/spectrogram parameters ───────────────────────────────────────────────
 TARGET_SR  = 4000    # CirCor native rate; heart sounds < 500 Hz
-WINDOW_SEC = 3.0
-HOP_SEC    = 1.5
+WINDOW_SEC = 5.0     # 5s guarantees 4-5 full cardiac cycles per window
+HOP_SEC    = 2.5
 LOWCUT     = 20.0
 HIGHCUT    = 950.0
 N_MELS     = 64
@@ -68,6 +68,21 @@ def audio_to_mel(audio):
         hop_length=HOP_LENGTH, fmin=LOWCUT, fmax=HIGHCUT,
     )
     return librosa.power_to_db(mel, ref=np.max)
+
+
+# ── Focal Loss ────────────────────────────────────────────────────────────────
+
+class FocalLoss(nn.Module):
+    """Focal loss: down-weights easy negatives to focus training on hard cases."""
+    def __init__(self, weight=None, gamma=2.0):
+        super().__init__()
+        self.weight = weight
+        self.gamma  = gamma
+
+    def forward(self, inputs, targets):
+        ce   = nn.functional.cross_entropy(inputs, targets, weight=self.weight, reduction="none")
+        pt   = torch.exp(-ce)
+        return ((1 - pt) ** self.gamma * ce).mean()
 
 
 # ── SpecAugment ────────────────────────────────────────────────────────────────
@@ -331,7 +346,7 @@ def main():
 
     model     = build_model(n_classes=2).to(device)
     w_tensor  = torch.tensor(class_weights, dtype=torch.float32).to(device)
-    criterion = nn.CrossEntropyLoss(weight=w_tensor)
+    criterion = FocalLoss(weight=w_tensor, gamma=2.0)
 
     # ── Phase 1: classifier head only ─────────────────────────────────────────
     print(f"\n── Phase 1: classifier head ({EPOCHS_P1} epochs) ──────────────")
