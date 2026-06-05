@@ -124,9 +124,9 @@ Copy the `.joblib` / `.pth` model files to the Pi before running inference.
 | Pipeline | Model | Dataset | Accuracy | ROC-AUC | Macro F1 |
 |----------|-------|---------|----------|---------|----------|
 | Heart | RF+HGB Ensemble | CirCor DigiScope | 79.5% | 0.696 | 0.634 |
-| Heart | MobileNetV2 CNN | CirCor DigiScope | 78.2% | 0.751 | 0.674 |
+| Heart | MobileNetV2 CNN | CirCor DigiScope | 70.0% | 0.765 | 0.620 |
 | Lung | Random Forest | ICBHI + HF_Lung_V1 | 48.1% | 0.671 | — |
-| Lung | MobileNetV2 CNN | ICBHI + HF_Lung_V1 | 43.5% | 0.679 | 0.355 |
+| Lung | MobileNetV2 CNN | ICBHI + HF_Lung_V1 | 43.1% | 0.680 | 0.350 |
 
 Lung classification is a 4-class problem (normal / crackle / wheeze / both) against a heavily imbalanced dataset — ROC-AUC is the primary metric.
 
