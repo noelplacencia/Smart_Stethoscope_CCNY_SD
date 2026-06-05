@@ -1,0 +1,88 @@
+[
+  {
+    "timestamp": "2026-06-03T00:00:00",
+    "pipeline": "heart",
+    "n_features": 20,
+    "n_windows": 41396,
+    "n_patients": 874,
+    "accuracy": 0.62,
+    "roc_auc": 0.69,
+    "mean_f1": 0.463,
+    "threshold": 0.3,
+    "notes": "GroupShuffleSplit patient-level split, SMOTE, StandardScaler, 20 features"
+  },
+  {
+    "timestamp": "2026-06-03T14:06:13",
+    "pipeline": "lung",
+    "n_features": 38,
+    "n_windows": 2995,
+    "n_patients": 92,
+    "accuracy": 0.3759,
+    "roc_auc": 0.5319,
+    "mean_f1": 0.227
+  },
+  {
+    "timestamp": "2026-06-03T14:09:22",
+    "pipeline": "piezo",
+    "n_features": 38,
+    "n_windows": 2995,
+    "n_patients": 92,
+    "accuracy": 0.369,
+    "roc_auc": 0.5296,
+    "mean_f1": 0.2379
+  },
+  {
+    "timestamp": "2026-06-03T14:19:27",
+    "pipeline": "heart",
+    "model": "Random Forest",
+    "n_features": 20,
+    "n_windows": 41396,
+    "n_patients": 874,
+    "accuracy": 0.781,
+    "roc_auc": 0.691,
+    "mean_f1": 0.6322,
+    "threshold": 0.45
+  },
+  {
+    "timestamp": "2026-06-03T15:26:04",
+    "pipeline": "lung",
+    "model": "MobileNetV2 (transfer learning)",
+    "n_windows": 2995,
+    "n_patients": 92,
+    "accuracy": 0.3909,
+    "roc_auc": 0.5713,
+    "mean_f1": 0.2866
+  },
+  {
+    "timestamp": "2026-06-03T16:00:00",
+    "pipeline": "lung",
+    "model": "Random Forest",
+    "n_features": 38,
+    "n_windows": 90880,
+    "n_patients": 263,
+    "accuracy": 0.481,
+    "roc_auc": 0.671,
+    "mean_f1": 0.345,
+    "notes": "ICBHI + HF_Lung_V1 combined, SMOTE, StandardScaler"
+  },
+  {
+    "timestamp": "2026-06-05T09:36:01",
+    "pipeline": "lung",
+    "model": "MobileNetV2 (transfer learning)",
+    "n_windows": 90880,
+    "n_patients": 263,
+    "accuracy": 0.4352,
+    "roc_auc": 0.6793,
+    "mean_f1": 0.355
+  },
+  {
+    "timestamp": "2026-06-05T10:19:26",
+    "pipeline": "piezo",
+    "model": "MobileNetV2 (transfer learning)",
+    "n_windows": 90880,
+    "n_patients": 263,
+    "accuracy": 0.4291,
+    "roc_auc": 0.6794,
+    "mean_f1": 0.3456
+  }
+]
