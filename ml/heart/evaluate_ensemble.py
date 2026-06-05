@@ -211,7 +211,11 @@ def main():
         patient_cnn[pid].append(prob)
 
     # ── Patient-level aggregation ─────────────────────────────────────────────
-    patient_ids = sorted(patient_label.keys())
+    # Some short recordings produce no 5s CNN windows; drop those patients
+    patient_ids = sorted(set(patient_rf.keys()) & set(patient_cnn.keys()))
+    dropped = len(patient_label) - len(patient_ids)
+    if dropped:
+        print(f"  ({dropped} patients dropped — no CNN windows at 5s)")
     y_patient   = np.array([patient_label[p] for p in patient_ids])
     rf_pat      = np.array([np.mean(patient_rf[p])  for p in patient_ids])
     cnn_pat     = np.array([np.mean(patient_cnn[p]) for p in patient_ids])
