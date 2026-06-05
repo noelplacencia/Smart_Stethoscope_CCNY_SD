@@ -157,6 +157,8 @@ def main():
     X       = df.drop(columns=["label", "patient_id"]).values
     y       = df["label"].values
 
+    groups = groups.astype(str)  # ensure string type for consistent matching
+
     gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
     _, test_idx   = next(gss.split(X, y, groups))
     test_patients = set(groups[test_idx])
@@ -180,7 +182,7 @@ def main():
     cache      = np.load(MEL_CACHE)
     mels       = cache["mels"]
     mel_labels = cache["labels"]
-    mel_pids   = cache["patient_ids"]
+    mel_pids   = cache["patient_ids"].astype(str)  # match RF string type
 
     test_mask  = np.isin(mel_pids, list(test_patients))
     mels_test  = mels[test_mask]
