@@ -134,9 +134,12 @@ Copy the `.joblib` / `.pth` model files to the Pi before running inference.
 
 | Pipeline | Model | Dataset | Accuracy | ROC-AUC | Macro F1 |
 |----------|-------|---------|----------|---------|----------|
-| Heart | RF+HGB Ensemble | CirCor DigiScope | 97.7% | 0.979 | 0.963 |
-| Heart | MobileNetV2 CNN | CirCor DigiScope | 90.9% | 0.857 | 0.835 |
-| Heart | RF+HGB + CNN Ensemble | CirCor DigiScope | 97.1% | 0.971 | 0.954 |
+| Heart | RF+HGB Ensemble       | CirCor DigiScope   | 97.7% | 0.979 | 0.963 |
+| Heart | MobileNetV2 CNN       | CirCor DigiScope   | 90.9% | 0.857 | 0.835 |
+| Heart | RF+HGB + CNN Ensemble | CirCor DigiScope   | 97.1% | 0.971 | 0.954 |
+| Lung  | Random Forest         | ICBHI + HF_Lung_V1 | 64.2% | —     | 0.374 |
+| Lung  | MobileNetV2 CNN       | ICBHI + HF_Lung_V1 | 58.5% | —     | 0.471 |
+| Lung  | RF + CNN Ensemble     | ICBHI + HF_Lung_V1 | 69.8% | —     | 0.516 |
 
 > **Why are patient-level numbers so much higher?** Two reasons: (1) averaging 40–50 window predictions per patient cancels out per-window noise — a model that is only slightly better than random on each window will converge to the correct answer reliably when you average many windows together; (2) the patient-level test set is small (175 patients, 36 with murmur), so a few correct predictions swing AUC significantly. Window-level metrics are the honest measure of what the model learned. Patient-level metrics reflect how the system would actually be used in deployment (a full recording, not a single 5-second clip), but should be interpreted cautiously given the small patient count.
 

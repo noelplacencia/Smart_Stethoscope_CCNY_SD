@@ -96,5 +96,23 @@
     "roc_auc": 0.696,
     "mean_f1": 0.6342,
     "threshold": 0.53
+  },
+  {
+    "timestamp": "2026-06-08T09:03:06",
+    "pipeline": "lung",
+    "model": "Ensemble (RF + CNN, patient-level)",
+    "n_patients": 53,
+    "accuracy": 0.6981,
+    "roc_auc": NaN,
+    "mean_f1": 0.5157
+  },
+  {
+    "timestamp": "2026-06-08T09:12:06",
+    "pipeline": "lung",
+    "model": "Ensemble (RF + CNN, patient-level)",
+    "n_patients": 53,
+    "accuracy": 0.6981,
+    "roc_auc": NaN,
+    "mean_f1": 0.5157
   }
 ]
