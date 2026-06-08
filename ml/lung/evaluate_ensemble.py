@@ -93,15 +93,15 @@ def evaluate_patient_level(label, y_patient, y_probs):
     Picks argmax as predicted class.
     """
     y_pred = np.argmax(y_probs, axis=1)
+    # Manual macro OvR AUC — skips absent classes (e.g. "both" at patient level)
     present = np.unique(y_patient)
-    try:
-        auc = float(roc_auc_score(
-            y_patient, y_probs[:, present],
-            multi_class="ovr", average="macro",
-            labels=present,
-        ))
-    except ValueError:
-        auc = float("nan")
+    per_class_aucs = []
+    for cls in present:
+        y_bin = (y_patient == cls).astype(int)
+        if len(np.unique(y_bin)) < 2:
+            continue
+        per_class_aucs.append(roc_auc_score(y_bin, y_probs[:, cls]))
+    auc = float(np.mean(per_class_aucs)) if per_class_aucs else float("nan")
     acc  = float(np.mean(y_pred == y_patient))
     mf1  = float(f1_score(y_patient, y_pred, average="macro", zero_division=0))
     print(f"\n{'─'*14} {label} (patient-level) {'─'*14}")
