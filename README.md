@@ -39,8 +39,9 @@ smart-stethoscope/
 │   └── templates/                   # Puran Chaudharry — dashboard & patient logging
 ├── ml/                              # Noel Placencia — ML pipeline
 │   ├── heart/
-│   │   ├── extract_features.py      # CirCor feature extraction (20 features)
-│   │   └── train.py                 # Random Forest — murmur detection
+│   │   ├── extract_features.py      # CirCor feature extraction (53 features)
+│   │   ├── train.py                 # RF+HGB Ensemble — murmur detection
+│   │   └── train_cnn.py             # MobileNetV2 CNN — murmur detection
 │   ├── lung/
 │   │   ├── extract_features.py      # ICBHI feature extraction (38 features)
 │   │   ├── extract_features_hf.py   # HF_Lung_V1 feature extraction
@@ -108,7 +109,10 @@ python ml/lung/train_cnn.py             # → ml/data/cnn_model_lung.pth
 **Heart sound model** (MEMS mic — CirCor DigiScope, binary murmur detection):
 ```bash
 python ml/heart/extract_features.py    # → ml/data/features_heart.csv
-python ml/heart/train.py               # → ml/data/rf_model_heart.joblib
+python ml/heart/train.py               # → ml/data/rf_model_heart.joblib  (RF+HGB ensemble)
+
+# CNN (MobileNetV2 transfer learning)
+python ml/heart/train_cnn.py           # → ml/data/cnn_model_heart.pth
 ```
 
 Copy the `.joblib` / `.pth` model files to the Pi before running inference.
@@ -117,11 +121,27 @@ Copy the `.joblib` / `.pth` model files to the Pi before running inference.
 
 ## Model results
 
+**Window-level** (each 3–5 second audio segment scored independently — primary training metric):
+
 | Pipeline | Model | Dataset | Accuracy | ROC-AUC | Macro F1 |
 |----------|-------|---------|----------|---------|----------|
-| Heart | Random Forest | CirCor DigiScope | 78.1% | 0.691 | 0.632 |
+| Heart | RF+HGB Ensemble | CirCor DigiScope | 79.5% | 0.696 | 0.634 |
+| Heart | MobileNetV2 CNN | CirCor DigiScope | 70.0% | 0.765 | 0.620 |
 | Lung | Random Forest | ICBHI + HF_Lung_V1 | 48.1% | 0.671 | — |
-| Lung | MobileNetV2 CNN | ICBHI + HF_Lung_V1 | 43.5% | 0.679 | 0.355 |
+| Lung | MobileNetV2 CNN | ICBHI + HF_Lung_V1 | 43.1% | 0.680 | 0.350 |
+
+**Patient-level** (all window probabilities for a patient are averaged into one score before classification):
+
+| Pipeline | Model | Dataset | Accuracy | ROC-AUC | Macro F1 |
+|----------|-------|---------|----------|---------|----------|
+| Heart | RF+HGB Ensemble       | CirCor DigiScope   | 97.7% | 0.979 | 0.963 |
+| Heart | MobileNetV2 CNN       | CirCor DigiScope   | 90.9% | 0.857 | 0.835 |
+| Heart | RF+HGB + CNN Ensemble | CirCor DigiScope   | 97.1% | 0.971 | 0.954 |
+| Lung  | Random Forest         | ICBHI + HF_Lung_V1 | 64.2% | —     | 0.374 |
+| Lung  | MobileNetV2 CNN       | ICBHI + HF_Lung_V1 | 58.5% | —     | 0.471 |
+| Lung  | RF + CNN Ensemble     | ICBHI + HF_Lung_V1 | 69.8% | —     | 0.516 |
+
+> **Why are patient-level numbers so much higher?** Two reasons: (1) averaging 40–50 window predictions per patient cancels out per-window noise — a model that is only slightly better than random on each window will converge to the correct answer reliably when you average many windows together; (2) the patient-level test set is small (175 patients, 36 with murmur), so a few correct predictions swing AUC significantly. Window-level metrics are the honest measure of what the model learned. Patient-level metrics reflect how the system would actually be used in deployment (a full recording, not a single 5-second clip), but should be interpreted cautiously given the small patient count.
 
 Lung classification is a 4-class problem (normal / crackle / wheeze / both) against a heavily imbalanced dataset — ROC-AUC is the primary metric.
 
