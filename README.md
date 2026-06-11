@@ -55,12 +55,19 @@ smart-stethoscope/
 
 ### ESP32 (firmware)
 
-1. Install [Arduino IDE](https://www.arduino.cc/en/software) and add ESP32 board support
-2. Install required libraries via Arduino Library Manager:
-   - `NimBLE-Arduino`
-   - `Adafruit MAX3010x`
-   - `MPU6050`
-3. Open `firmware/main/main.ino` and upload to the ESP32
+1. Install [PlatformIO](https://platformio.org/install/cli) (CLI) or the PlatformIO extension for VS Code
+2. Build and flash:
+   ```bash
+   cd firmware
+   pio run                        # compile
+   pio run --target upload        # compile + flash (ESP32 connected via USB)
+   ```
+   Libraries are installed automatically from `platformio.ini`:
+   - `SparkFun MAX3010x Pulse and Proximity Sensor Library`
+   - `MPU6050` (Electronic Cats)
+   - BLE and I²S are part of the ESP32 Arduino core
+
+The firmware file is `firmware/main/smart_stethoscope_ble.ino`. It streams a JSON packet at 20 Hz over both BLE and USB serial (`/dev/ttyACM0` at 115200 baud). When sensors are not connected it starts up cleanly and outputs placeholder values.
 
 ### Raspberry Pi (inference)
 
