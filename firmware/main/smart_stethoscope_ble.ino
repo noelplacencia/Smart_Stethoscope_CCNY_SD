@@ -138,26 +138,37 @@ void setup() {
 
   i2s_init();
 
+  // Probe I2C before init — prevents hanging when sensors are not wired
+  Wire.beginTransmission(0x57);
+  bool maxPresent = (Wire.endTransmission() == 0);
+  Wire.beginTransmission(0x68);
+  bool imuPresent = (Wire.endTransmission() == 0);
+
   // MAX30102 — prime rolling buffer for first SpO2 calculation
-  hasMAX = particleSensor.begin(Wire, I2C_SPEED_FAST);
-  if (hasMAX) {
-    particleSensor.setup(60, 4, 2, 100, 411, 4096);
-    for (int i = 0; i < MAX30102_BUF; i++) {
-      while (!particleSensor.available()) particleSensor.check();
-      redBuf[i] = particleSensor.getRed();
-      irBuf[i]  = particleSensor.getIR();
-      particleSensor.nextSample();
+  if (maxPresent) {
+    hasMAX = particleSensor.begin(Wire, I2C_SPEED_FAST);
+    if (hasMAX) {
+      particleSensor.setup(60, 4, 2, 100, 411, 4096);
+      for (int i = 0; i < MAX30102_BUF; i++) {
+        while (!particleSensor.available()) particleSensor.check();
+        redBuf[i] = particleSensor.getRed();
+        irBuf[i]  = particleSensor.getIR();
+        particleSensor.nextSample();
+      }
+      maxim_heart_rate_and_oxygen_saturation(irBuf, MAX30102_BUF, redBuf,
+        &spo2Val, &spo2Valid, &hrPPGVal, &hrPPGValid);
     }
-    maxim_heart_rate_and_oxygen_saturation(irBuf, MAX30102_BUF, redBuf,
-      &spo2Val, &spo2Valid, &hrPPGVal, &hrPPGValid);
   } else {
     Serial.println("[WARN] MAX30102 not found");
   }
 
   // MPU-6050
-  imu.initialize();
-  hasIMU = imu.testConnection();
-  if (!hasIMU) Serial.println("[WARN] MPU-6050 not found");
+  if (imuPresent) {
+    imu.initialize();
+    hasIMU = imu.testConnection();
+  } else {
+    Serial.println("[WARN] MPU-6050 not found");
+  }
 
   BLEDevice::init(DEVICE_NAME);
   BLEServer *server = BLEDevice::createServer();
