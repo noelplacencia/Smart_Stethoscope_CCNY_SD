@@ -7,7 +7,8 @@
   - MAX30102 now read via I2C (replaces simulated heart_rate and spo2)
   - MPU-6050 now read via I2C (replaces simulated imu_x, imu_y, imu_z)
   - ECG R-peak detector added for real heart_rate from AD8232
-  - All original pins, JSON fields, and BLE structure kept unchanged
+  - Audio streaming characteristic added: raw int16 PCM chest-channel audio at 16 kHz
+  - Audio task runs on Core 0; main vitals loop runs on Core 1
 
   Required libraries (Arduino Library Manager):
     SparkFun MAX3010x Pulse and Proximity Sensor Library
@@ -29,7 +30,8 @@
 #define DEVICE_NAME "SmartStethoscope_ESP32"
 
 #define SERVICE_UUID        "7b4d0001-8a7b-4d2b-9b41-000000000001"
-#define CHARACTERISTIC_UUID "7b4d0002-8a7b-4d2b-9b41-000000000001"
+#define CHARACTERISTIC_UUID "7b4d0002-8a7b-4d2b-9b41-000000000001"  // vitals JSON (20 Hz)
+#define AUDIO_CHAR_UUID     "7b4d0003-8a7b-4d2b-9b41-000000000002"  // int16 PCM audio (16 kHz)
 
 // Original ADC pins — unchanged
 #define ECG_PIN       4
@@ -52,8 +54,11 @@
 // I2S driver settings
 #define I2S_PORT    I2S_NUM_0
 #define SAMPLE_RATE 16000
-#define DMA_COUNT   4
+#define DMA_COUNT   8     // 8 buffers keeps >50 ms of headroom; prevents overflow between JSON sends
 #define DMA_LEN     128   // samples per DMA buffer
+
+// Audio streaming: 256 chest samples per BLE notification = 512 bytes = 16 ms of audio
+#define AUDIO_CHUNK 256
 
 // MAX30102 rolling buffer length required by SparkFun SpO2 algorithm
 #define MAX30102_BUF 100
@@ -70,8 +75,13 @@ uint32_t redBuf[MAX30102_BUF];
 int32_t  spo2Val   = 0;  int8_t spo2Valid  = 0;
 int32_t  hrPPGVal  = 0;  int8_t hrPPGValid = 0;
 
-BLECharacteristic *dataCharacteristic;
+BLECharacteristic *dataCharacteristic  = nullptr;
+BLECharacteristic *audioCharacteristic = nullptr;
 bool deviceConnected = false;
+
+// Latest mic samples — written by audioTask (Core 0), read by loop (Core 1)
+volatile int16_t latestChest   = 0;
+volatile int16_t latestAmbient = 0;
 
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* server) {
@@ -103,6 +113,40 @@ void i2s_init() {
   pins.data_out_num = I2S_PIN_NO_CHANGE;
   pins.data_in_num  = I2S_DIN;
   i2s_set_pin(I2S_PORT, &pins);
+}
+
+// Audio streaming task — owns all I2S reads, runs on Core 0.
+// Accumulates AUDIO_CHUNK chest-channel int16 samples, then notifies RPi.
+// Also keeps latestChest / latestAmbient current for the JSON vitals loop.
+void audioTask(void *param) {
+  int16_t chunk[AUDIO_CHUNK];
+  int     fill = 0;
+  int32_t raw[DMA_LEN * 2];  // DMA_LEN stereo pairs
+
+  for (;;) {
+    size_t got = 0;
+    // Blocking read with 20 ms timeout — waits for new DMA data
+    i2s_read(I2S_PORT, raw, sizeof(raw), &got, pdMS_TO_TICKS(20));
+    int n = (int)(got / (sizeof(int32_t) * 2));  // number of stereo pairs received
+
+    for (int i = 0; i < n; i++) {
+      // SPH0645: 24-bit audio in bits[31:8]; shift >> 16 gives a signed 16-bit value
+      int16_t chest   = (int16_t)(raw[i * 2]     >> 16);
+      int16_t ambient = (int16_t)(raw[i * 2 + 1] >> 16);
+
+      latestChest   = chest;
+      latestAmbient = ambient;
+
+      chunk[fill++] = chest;
+      if (fill == AUDIO_CHUNK) {
+        if (deviceConnected && audioCharacteristic) {
+          audioCharacteristic->setValue((uint8_t*)chunk, sizeof(chunk));
+          audioCharacteristic->notify();
+        }
+        fill = 0;
+      }
+    }
+  }
 }
 
 // R-peak detector for ECG heart rate (derivative + adaptive threshold)
@@ -138,39 +182,57 @@ void setup() {
 
   i2s_init();
 
+  // Probe I2C before init — prevents hanging when sensors are not wired
+  Wire.beginTransmission(0x57);
+  bool maxPresent = (Wire.endTransmission() == 0);
+  Wire.beginTransmission(0x68);
+  bool imuPresent = (Wire.endTransmission() == 0);
+
   // MAX30102 — prime rolling buffer for first SpO2 calculation
-  hasMAX = particleSensor.begin(Wire, I2C_SPEED_FAST);
-  if (hasMAX) {
-    particleSensor.setup(60, 4, 2, 100, 411, 4096);
-    for (int i = 0; i < MAX30102_BUF; i++) {
-      while (!particleSensor.available()) particleSensor.check();
-      redBuf[i] = particleSensor.getRed();
-      irBuf[i]  = particleSensor.getIR();
-      particleSensor.nextSample();
+  if (maxPresent) {
+    hasMAX = particleSensor.begin(Wire, I2C_SPEED_FAST);
+    if (hasMAX) {
+      particleSensor.setup(60, 4, 2, 100, 411, 4096);
+      for (int i = 0; i < MAX30102_BUF; i++) {
+        while (!particleSensor.available()) particleSensor.check();
+        redBuf[i] = particleSensor.getRed();
+        irBuf[i]  = particleSensor.getIR();
+        particleSensor.nextSample();
+      }
+      maxim_heart_rate_and_oxygen_saturation(irBuf, MAX30102_BUF, redBuf,
+        &spo2Val, &spo2Valid, &hrPPGVal, &hrPPGValid);
     }
-    maxim_heart_rate_and_oxygen_saturation(irBuf, MAX30102_BUF, redBuf,
-      &spo2Val, &spo2Valid, &hrPPGVal, &hrPPGValid);
   } else {
     Serial.println("[WARN] MAX30102 not found");
   }
 
   // MPU-6050
-  imu.initialize();
-  hasIMU = imu.testConnection();
-  if (!hasIMU) Serial.println("[WARN] MPU-6050 not found");
+  if (imuPresent) {
+    imu.initialize();
+    hasIMU = imu.testConnection();
+  } else {
+    Serial.println("[WARN] MPU-6050 not found");
+  }
 
   BLEDevice::init(DEVICE_NAME);
   BLEServer *server = BLEDevice::createServer();
   server->setCallbacks(new ServerCallbacks());
 
-  BLEService *service = server->createService(SERVICE_UUID);
+  // 30 handles: service(1) + 2×char(4) + 2×CCCD(2) + margin
+  BLEService *service = server->createService(BLEUUID(SERVICE_UUID), 30);
 
   dataCharacteristic = service->createCharacteristic(
     CHARACTERISTIC_UUID,
     BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
   );
-
   dataCharacteristic->addDescriptor(new BLE2902());
+
+  audioCharacteristic = service->createCharacteristic(
+    AUDIO_CHAR_UUID,
+    BLECharacteristic::PROPERTY_NOTIFY
+  );
+  audioCharacteristic->addDescriptor(new BLE2902());
+
   service->start();
 
   BLEAdvertising *advertising = BLEDevice::getAdvertising();
@@ -179,6 +241,9 @@ void setup() {
   advertising->setMinPreferred(0x06);
   advertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
+
+  // Audio task on Core 0 — main vitals loop stays on Core 1
+  xTaskCreatePinnedToCore(audioTask, "audio", 4096, NULL, 1, NULL, 0);
 
   Serial.println("Smart Stethoscope BLE started.");
 }
@@ -219,57 +284,34 @@ void loop() {
         &spo2Val, &spo2Valid, &hrPPGVal, &hrPPGValid);
   }
 
-  // Send packet at ~20 Hz — same structure as original
+  // Send vitals packet at ~20 Hz
   if (now - lastSend >= 50) {
     lastSend = now;
 
-    // ADC reads — unchanged from original
     int ecgRaw      = analogRead(ECG_PIN);
     int pressureRaw = analogRead(PRESSURE_PIN);
     int piezo1Raw   = analogRead(PIEZO1_PIN);
     int piezo2Raw   = analogRead(PIEZO2_PIN);
 
-    // Heart rate: use ECG R-peak result; fall back to PPG if ECG not yet locked
     int heartRate = (ecgHR > 0) ? (int)ecgHR : (int)hrPPGVal;
-
-    // SpO2 from MAX30102; keep original fallback value if sensor not ready
     int spo2 = (hasMAX && spo2Valid && spo2Val > 0) ? (int)spo2Val : 97;
-
-    // Respiration — placeholder until dedicated sensor is wired (Phase 2)
     int respiration = 16;
-
-    // Temperature — placeholder until NTC/DS18B20 is wired (Phase 2)
     float temperature = 36.7;
 
-    // IMU from MPU-6050; keep original fallback values if sensor absent
     float imuX = 0.02, imuY = 0.03, imuZ = 1.00;
     if (hasIMU) {
       int16_t ax, ay, az, gx, gy, gz;
       imu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-      imuX = ax / 16384.0f;  // ±2g full-scale
+      imuX = ax / 16384.0f;
       imuY = ay / 16384.0f;
       imuZ = az / 16384.0f;
     }
 
-    // MEMS mic read via I2S — drains DMA buffer and takes the latest stereo pair
-    // SPH0645: 24-bit audio in bits[31:8] of each 32-bit word; shift >> 16 for int16
-    int32_t i2sBuf[DMA_LEN * 2];
-    size_t  got = 0;
-    i2s_read(I2S_PORT, i2sBuf, sizeof(i2sBuf), &got, 0);  // non-blocking
-    int chestMic   = 2000;  // defaults if I2S not yet ready
-    int ambientMic = 1500;
-    if (got >= 8) {
-      int n = (int)(got / (2 * sizeof(int32_t)));
-      chestMic   = (int)(i2sBuf[(n - 1) * 2]     >> 16);
-      ambientMic = (int)(i2sBuf[(n - 1) * 2 + 1] >> 16);
-    }
-
-    // Ambient noise subtraction before sending (from DSP pipeline spec)
-    int heart_sound   = chestMic - (int)(0.8f * ambientMic);
-    int ambient_sound = ambientMic;
+    // Use latest mic samples from the audio task for dashboard waveform display
+    int heart_sound   = (int)latestChest - (int)(0.8f * latestAmbient);
+    int ambient_sound = (int)latestAmbient;
 
     char payload[512];
-
     snprintf(payload, sizeof(payload),
       "{\"seq\":%d,\"ecg\":%d,\"heart_sound\":%d,\"ambient_sound\":%d,"
       "\"heart_rate\":%d,\"spo2\":%d,\"respiration\":%d,\"temperature\":%.2f,"

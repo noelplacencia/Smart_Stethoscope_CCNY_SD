@@ -1,4 +1,5 @@
 __pycache__/
+firmware/.pio/
 *.pyc
 .env
 venv/

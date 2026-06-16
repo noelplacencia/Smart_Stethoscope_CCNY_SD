@@ -41,13 +41,15 @@ smart-stethoscope/
 │   ├── heart/
 │   │   ├── extract_features.py      # CirCor feature extraction (53 features)
 │   │   ├── train.py                 # RF+HGB Ensemble — murmur detection
-│   │   └── train_cnn.py             # MobileNetV2 CNN — murmur detection
+│   │   ├── train_cnn.py             # MobileNetV2 CNN — murmur detection
+│   │   └── evaluate_ensemble.py     # Patient-level RF+CNN soft ensemble evaluation
 │   ├── lung/
 │   │   ├── extract_features.py      # ICBHI feature extraction (38 features)
 │   │   ├── extract_features_hf.py   # HF_Lung_V1 feature extraction
 │   │   ├── extract_mels_hf.py       # HF_Lung_V1 mel spectrogram extraction
 │   │   ├── train.py                 # Random Forest — lung sound classification
-│   │   └── train_cnn.py             # MobileNetV2 CNN — lung sound classification
+│   │   ├── train_cnn.py             # MobileNetV2 CNN — lung sound classification
+│   │   └── evaluate_ensemble.py     # Patient-level RF+CNN soft ensemble evaluation
 │   ├── piezo/
 │   │   ├── extract_features.py
 │   │   ├── train.py
@@ -137,13 +139,14 @@ Copy the `.joblib` / `.pth` model files to the Pi before running inference.
 | Heart | RF+HGB Ensemble       | CirCor DigiScope   | 97.7% | 0.979 | 0.963 |
 | Heart | MobileNetV2 CNN       | CirCor DigiScope   | 90.9% | 0.857 | 0.835 |
 | Heart | RF+HGB + CNN Ensemble | CirCor DigiScope   | 97.1% | 0.971 | 0.954 |
-| Lung  | Random Forest         | ICBHI + HF_Lung_V1 | 64.2% | —     | 0.374 |
-| Lung  | MobileNetV2 CNN       | ICBHI + HF_Lung_V1 | 58.5% | —     | 0.471 |
-| Lung  | RF + CNN Ensemble     | ICBHI + HF_Lung_V1 | 69.8% | —     | 0.516 |
+| Lung  | Random Forest         | ICBHI + HF_Lung_V1 | 64.2% | 0.736 | 0.374 |
+| Lung  | MobileNetV2 CNN       | ICBHI + HF_Lung_V1 | 58.5% | 0.779 | 0.471 |
+| Lung  | RF + CNN Ensemble     | ICBHI + HF_Lung_V1 | 69.8% | 0.789 | 0.516 |
 
-> **Why are patient-level numbers so much higher?** Two reasons: (1) averaging 40–50 window predictions per patient cancels out per-window noise — a model that is only slightly better than random on each window will converge to the correct answer reliably when you average many windows together; (2) the patient-level test set is small (175 patients, 36 with murmur), so a few correct predictions swing AUC significantly. Window-level metrics are the honest measure of what the model learned. Patient-level metrics reflect how the system would actually be used in deployment (a full recording, not a single 5-second clip), but should be interpreted cautiously given the small patient count.
+> **Why are patient-level numbers so much higher?**
+> Averaging many window predictions per patient cancels out per-window noise — a model that is only slightly better than random on each clip will converge to the correct answer reliably when many clips are averaged together. **Heart caveat:** the patient test set is small (175 patients, 36 with murmur), so a few correct predictions swing AUC significantly. **Lung caveat:** ICBHI labels are per respiratory cycle, not per patient — a single recording may contain both normal and crackle cycles. Patient-level ground truth is assigned by majority vote across cycles, which introduces label noise not present in the heart dataset. Window-level metrics are the honest measure of what each model learned; patient-level metrics reflect deployment reality but should be interpreted with these limitations in mind.
 
-Lung classification is a 4-class problem (normal / crackle / wheeze / both) against a heavily imbalanced dataset — ROC-AUC is the primary metric.
+Lung classification is a 4-class problem (normal / crackle / wheeze / both) against a heavily imbalanced dataset — ROC-AUC is the primary window-level metric. Patient-level AUC is computed as macro OvR over the 3 classes present after majority-vote aggregation (normal, crackle, wheeze); the "both" class disappears entirely at patient level (0 of 53 patients), so it is excluded from the AUC calculation.
 
 ---
 
