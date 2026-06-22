@@ -1,64 +1,138 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Patient Dashboard V2</title>
+    <title>Patient View</title>
     <link rel="stylesheet" href="/static/style_v2.css">
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
+
 <body class="light">
 
-<header class="topbar">
-    <h1>Patient View</h1>
-    <span class="live">● Live</span>
-    <a href="/doctor_v2">Doctor View</a>
+<header class="compact-header">
+
+    <h1>Patient Dashboard</h1>
+
+    <span class="live">● LIVE</span>
+
+    <div>
+        <a href="/doctor_v2">Doctor View</a>
+        <a href="/telehealth_v2">Telehealth</a>
+    </div>
+
 </header>
 
-<main class="patient-grid">
+<main class="compact-grid">
+
+    <!-- Status -->
 
     <section class="card status-card">
-        <h2>Overall Status</h2>
-        <div id="patientStatus" class="status normal">Normal</div>
-        <p id="patientAlert">All systems operating normally.</p>
+
+        <h2>Overall Health Status</h2>
+
+        <div id="patientStatus" class="status normal">
+            Normal
+        </div>
+
+        <p id="patientAlert">
+            No active alerts
+        </p>
+
     </section>
 
-    <section class="card metric">
-        <h2>SpO₂</h2>
-        <div><span id="spo2">--</span>%</div>
-    </section>
+    <!-- Vital Cards -->
 
     <section class="card metric">
-        <h2>Heart Rate</h2>
+        <h3>❤️ Heart Rate</h3>
         <div><span id="hr">--</span> bpm</div>
     </section>
 
     <section class="card metric">
-        <h2>Respiration</h2>
+        <h3>🩸 SpO₂</h3>
+        <div><span id="spo2">--</span>%</div>
+    </section>
+
+    <section class="card metric">
+        <h3>🫁 Respiration</h3>
         <div><span id="resp">--</span> rpm</div>
     </section>
 
     <section class="card metric">
-        <h2>Temperature</h2>
-        <div><span id="temp">--</span> °C</div>
+        <h3>🌡 Temperature</h3>
+        <div><span id="temp">--</span>°C</div>
     </section>
 
-    <section class="card wide">
-        <h2>Live ECG Activity</h2>
+    <!-- ECG -->
+
+    <section class="card chart-card">
+
+        <h3>📈 Live ECG</h3>
+
         <div id="patientEcg"></div>
+
     </section>
 
-    <section class="card">
-        <h2>AI Summary</h2>
-        <p id="confidence">96%</p>
-        <p>AI-assisted monitoring active</p>
-    </section>
+    <!-- Heart -->
 
     <section class="card">
-        <h2>Health Tips</h2>
+
+        <h3>❤️ Heart Health</h3>
+
+        <img
+            src="https://cdn-icons-png.flaticon.com/512/833/833472.png"
+            width="100">
+
+        <p>
+            Real-time heart monitoring and AI analysis.
+        </p>
+
+    </section>
+
+    <!-- Lungs -->
+
+    <section class="card">
+
+        <h3>🫁 Lung Health</h3>
+
+        <img
+            src="https://cdn-icons-png.flaticon.com/512/2966/2966486.png"
+            width="100">
+
+        <p>
+            Respiratory monitoring and breathing assessment.
+        </p>
+
+    </section>
+
+    <!-- AI Summary -->
+
+    <section class="card">
+
+        <h3>🤖 AI Summary</h3>
+
+        <p>
+            Confidence:
+            <span id="confidence">96%</span>
+        </p>
+
+        <p>
+            AI-assisted monitoring active.
+        </p>
+
+    </section>
+
+    <!-- Health Tips -->
+
+    <section class="card">
+
+        <h3>💡 Health Tips</h3>
+
         <ul>
-            <li>Maintain hydration</li>
-            <li>Monitor symptoms</li>
+            <li>Stay hydrated</li>
+            <li>Maintain healthy breathing</li>
             <li>Follow physician advice</li>
+            <li>Monitor symptoms regularly</li>
         </ul>
+
     </section>
 
 </main>
