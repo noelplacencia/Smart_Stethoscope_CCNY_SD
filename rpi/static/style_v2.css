@@ -30,53 +30,62 @@ body.light {
 }
 
 .sidebar {
-    width: 230px;
+    width: 190px;
     background: #050b14;
-    padding: 24px 18px;
+    padding: 16px;
 }
 
 .sidebar h2 {
-    color: white;
     margin-top: 0;
+    font-size: 22px;
 }
 
 .sidebar a,
-.topbar a,
+.compact-header a,
 .btn,
 button {
-    display: block;
+    display: inline-block;
     text-decoration: none;
     background: var(--blue);
     color: white;
-    padding: 10px 14px;
-    border-radius: 8px;
-    margin: 10px 0;
+    padding: 8px 11px;
+    border-radius: 7px;
+    margin: 4px;
     border: none;
     font-weight: bold;
     cursor: pointer;
+    font-size: 13px;
+}
+
+.sidebar a {
+    display: block;
 }
 
 .sidebar a.active {
     background: var(--green);
 }
 
+.sidebar-status {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
 .content {
     flex: 1;
 }
 
-header,
-.topbar {
+.compact-header {
     display: flex;
     align-items: center;
-    gap: 18px;
-    padding: 18px 28px;
+    gap: 14px;
+    padding: 10px 18px;
     border-bottom: 1px solid rgba(120,120,120,0.25);
 }
 
-header h1,
-.topbar h1 {
+.compact-header h1 {
     flex: 1;
     margin: 0;
+    font-size: 24px;
 }
 
 .live {
@@ -84,29 +93,19 @@ header h1,
     font-weight: bold;
 }
 
-.grid,
-.patient-grid,
-.tele-grid {
-    padding: 24px;
+.compact-grid {
+    padding: 12px;
     display: grid;
-    gap: 18px;
-}
-
-.grid,
-.patient-grid {
     grid-template-columns: repeat(4, 1fr);
-}
-
-.tele-grid {
-    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
 }
 
 .card {
     background: var(--light-card);
     color: #101827;
-    padding: 18px;
-    border-radius: 14px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
 }
 
 .dark .card {
@@ -115,18 +114,29 @@ header h1,
     border: 1px solid rgba(255,255,255,0.08);
 }
 
-.metric h1,
+.card h2,
+.card h3 {
+    margin: 0 0 7px 0;
+    font-size: 16px;
+}
+
+.card p,
+.card li,
+.card td {
+    font-size: 13px;
+}
+
 .metric div {
-    font-size: 34px;
-    margin: 8px 0;
+    font-size: 27px;
+    font-weight: bold;
 }
 
 .status {
     display: inline-block;
-    font-size: 30px;
+    font-size: 22px;
     font-weight: bold;
-    padding: 12px 18px;
-    border-radius: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
 }
 
 .status.normal {
@@ -144,25 +154,33 @@ header h1,
     color: var(--red);
 }
 
-.wide {
+.chart-card {
+    grid-column: span 2;
+}
+
+.status-card {
     grid-column: span 2;
 }
 
 #doctorEcg,
 #doctorHeart,
-#spo2Trend,
-#respTrend,
 #patientEcg {
-    height: 270px;
+    height: 170px;
+}
+
+#spo2Trend,
+#respTrend {
+    height: 130px;
 }
 
 textarea {
     width: 100%;
-    min-height: 80px;
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 10px;
+    min-height: 45px;
+    padding: 6px;
+    border-radius: 7px;
+    margin-bottom: 6px;
     box-sizing: border-box;
+    font-size: 13px;
 }
 
 table {
@@ -171,29 +189,46 @@ table {
 }
 
 td {
-    padding: 8px;
+    padding: 4px;
     border-bottom: 1px solid rgba(120,120,120,0.25);
 }
 
 .note-item {
-    margin-top: 10px;
-    padding: 10px;
-    border-radius: 8px;
+    margin-top: 6px;
+    padding: 6px;
+    border-radius: 7px;
     background: rgba(120,120,120,0.12);
+    font-size: 12px;
 }
 
 .video-box {
-    height: 300px;
+    height: 170px;
     display: grid;
     place-content: center;
     text-align: center;
-    border-radius: 16px;
+    border-radius: 14px;
     background: linear-gradient(135deg, #dbeafe, #eff6ff);
-    font-size: 28px;
+    font-size: 22px;
     font-weight: bold;
 }
 
-@media (max-width: 1000px) {
+img {
+    display: block;
+    margin: 6px auto;
+}
+
+@media (max-width: 1100px) {
+    .compact-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .chart-card,
+    .status-card {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 700px) {
     .shell {
         display: block;
     }
@@ -202,13 +237,16 @@ td {
         width: auto;
     }
 
-    .grid,
-    .patient-grid,
-    .tele-grid {
+    .compact-grid {
         grid-template-columns: 1fr;
     }
 
-    .wide {
+    .chart-card,
+    .status-card {
         grid-column: span 1;
+    }
+
+    .compact-header {
+        display: block;
     }
 }
