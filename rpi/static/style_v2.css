@@ -1,0 +1,297 @@
+:root {
+    --blue: #2563eb;
+    --green: #16a34a;
+    --orange: #f59e0b;
+    --red: #dc2626;
+    --dark-bg: #07111f;
+    --dark-card: #0f2035;
+    --light-bg: #f4f7fb;
+    --light-card: #ffffff;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body.dark {
+    background: var(--dark-bg);
+    color: white;
+}
+
+body.light {
+    background: var(--light-bg);
+    color: #101827;
+}
+
+.shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 185px;
+    background: #050b14;
+    padding: 14px;
+}
+
+.sidebar h2 {
+    margin-top: 0;
+    font-size: 21px;
+}
+
+.sidebar a,
+.compact-header a,
+.btn,
+button {
+    display: inline-block;
+    text-decoration: none;
+    background: var(--blue);
+    color: white;
+    padding: 7px 10px;
+    border-radius: 7px;
+    margin: 4px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.sidebar a {
+    display: block;
+}
+
+.sidebar a.active {
+    background: var(--green);
+}
+
+.sidebar-status {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-top: 14px;
+}
+
+.content {
+    flex: 1;
+}
+
+.compact-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 16px;
+    border-bottom: 1px solid rgba(120,120,120,0.25);
+}
+
+.compact-header h1 {
+    flex: 1;
+    margin: 0;
+    font-size: 23px;
+}
+
+.live {
+    color: var(--green);
+    font-weight: bold;
+}
+
+.alert-banner {
+    margin: 10px 12px 0 12px;
+    padding: 9px 14px;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.normal-banner {
+    background: rgba(22, 163, 74, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(22, 163, 74, 0.35);
+}
+
+.compact-grid {
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 9px;
+}
+
+.card {
+    background: var(--light-card);
+    color: #101827;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+}
+
+.dark .card {
+    background: var(--dark-card);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.card h2,
+.card h3 {
+    margin: 0 0 6px 0;
+    font-size: 15px;
+}
+
+.card p,
+.card li,
+.card td {
+    font-size: 12.5px;
+}
+
+.patient-info p {
+    margin: 4px 0;
+}
+
+.metric div {
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.status {
+    display: inline-block;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 7px 11px;
+    border-radius: 10px;
+}
+
+.status.normal {
+    background: rgba(22,163,74,0.15);
+    color: var(--green);
+}
+
+.status.warning {
+    background: rgba(245,158,11,0.15);
+    color: var(--orange);
+}
+
+.status.critical {
+    background: rgba(220,38,38,0.15);
+    color: var(--red);
+}
+
+.chart-card {
+    grid-column: span 2;
+}
+
+.small-chart {
+    grid-column: span 1;
+}
+
+.status-card {
+    grid-column: span 2;
+}
+
+#doctorEcg,
+#doctorHeart,
+#patientEcg {
+    height: 155px;
+}
+
+#spo2Trend,
+#respTrend {
+    height: 115px;
+}
+
+textarea {
+    width: 100%;
+    min-height: 38px;
+    padding: 5px;
+    border-radius: 7px;
+    margin-bottom: 5px;
+    box-sizing: border-box;
+    font-size: 12px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td {
+    padding: 3px;
+    border-bottom: 1px solid rgba(120,120,120,0.25);
+}
+
+.note-item {
+    margin-top: 5px;
+    padding: 5px;
+    border-radius: 7px;
+    background: rgba(120,120,120,0.12);
+    font-size: 11.5px;
+}
+
+.big-icon {
+    font-size: 58px;
+    text-align: center;
+    margin: 5px 0;
+}
+
+.visual-card {
+    text-align: center;
+}
+
+.confidence-bar {
+    width: 100%;
+    height: 9px;
+    background: rgba(120,120,120,0.25);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+
+.confidence-fill {
+    width: 96%;
+    height: 100%;
+    background: var(--green);
+}
+
+.video-box {
+    height: 155px;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #dbeafe, #eff6ff);
+    font-size: 22px;
+    font-weight: bold;
+    color: #101827;
+}
+
+@media (max-width: 1200px) {
+    .compact-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .chart-card,
+    .status-card {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 800px) {
+    .shell {
+        display: block;
+    }
+
+    .sidebar {
+        width: auto;
+    }
+
+    .compact-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-card,
+    .status-card,
+    .small-chart {
+        grid-column: span 1;
+    }
+
+    .compact-header {
+        display: block;
+    }
+}

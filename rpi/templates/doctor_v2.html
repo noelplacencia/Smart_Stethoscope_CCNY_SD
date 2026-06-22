@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Doctor View</title>
+    <link rel="stylesheet" href="/static/style_v2.css">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+
+<body class="dark">
+<div class="shell">
+
+    <aside class="sidebar">
+        <h2>🩺 SmartScope</h2>
+        <a href="/doctor_v2" class="active">Doctor View</a>
+        <a href="/patient_v2">Patient View</a>
+        <a href="/telehealth_v2">Telehealth</a>
+        <a href="/api/report_v2">📄 PDF Report</a>
+
+        <div class="sidebar-status">
+            <p>🟢 System Online</p>
+            <p>🤖 AI Enabled</p>
+            <p>📡 BLE Ready</p>
+        </div>
+    </aside>
+
+    <main class="content">
+        <header class="compact-header">
+            <h1>Doctor Clinical Dashboard</h1>
+            <span class="live">● LIVE</span>
+        </header>
+
+        <div class="alert-banner normal-banner">
+            🟢 Patient Status: Normal • AI monitoring active • Remote dashboard connected
+        </div>
+
+        <section class="compact-grid">
+
+            <div class="card patient-info">
+                <h3>👤 Patient Information</h3>
+                <p><b>ID:</b> 001</p>
+                <p><b>Name:</b> Demo Patient</p>
+                <p><b>Age:</b> --</p>
+                <p><b>Visit:</b> Telehealth Monitoring</p>
+            </div>
+
+            <div class="card metric">
+                <h3>❤️ Heart Rate</h3>
+                <div><span id="hr">--</span> bpm</div>
+            </div>
+
+            <div class="card metric">
+                <h3>🩸 SpO₂</h3>
+                <div><span id="spo2">--</span>%</div>
+            </div>
+
+            <div class="card metric">
+                <h3>🫁 Respiration</h3>
+                <div><span id="resp">--</span> rpm</div>
+            </div>
+
+            <div class="card metric">
+                <h3>🌡 Temperature</h3>
+                <div><span id="temp">--</span>°C</div>
+            </div>
+
+            <div class="card chart-card">
+                <h3>📈 ECG Waveform</h3>
+                <div id="doctorEcg"></div>
+            </div>
+
+            <div class="card chart-card">
+                <h3>🎧 Heart Sound</h3>
+                <div id="doctorHeart"></div>
+            </div>
+
+            <div class="card small-chart">
+                <h3>🩸 SpO₂ Trend</h3>
+                <div id="spo2Trend"></div>
+            </div>
+
+            <div class="card small-chart">
+                <h3>🫁 Resp Trend</h3>
+                <div id="respTrend"></div>
+            </div>
+
+            <div class="card">
+                <h3>🤖 AI Summary</h3>
+                <div id="patientStatus" class="status normal">Normal</div>
+                <p id="patientAlert">No active alerts</p>
+                <p>Confidence: <span id="confidence">96%</span></p>
+                <div class="confidence-bar">
+                    <div class="confidence-fill"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📡 Device Status</h3>
+                <p>BLE: <span id="bleStatus">Waiting</span></p>
+                <p>AI Engine: Running</p>
+                <p>Updated: <span id="updated">--</span></p>
+            </div>
+
+            <div class="card">
+                <h3>💬 Doctor Notes</h3>
+                <textarea id="assessment" placeholder="Assessment"></textarea>
+                <textarea id="plan" placeholder="Plan"></textarea>
+                <button onclick="saveNote()">Save Notes</button>
+                <div id="notesList"></div>
+            </div>
+
+            <div class="card">
+                <h3>📋 Raw Sensors</h3>
+                <table>
+                    <tr><td>IMU X</td><td id="imux">--</td></tr>
+                    <tr><td>IMU Y</td><td id="imuy">--</td></tr>
+                    <tr><td>IMU Z</td><td id="imuz">--</td></tr>
+                    <tr><td>Pressure</td><td id="pressure">--</td></tr>
+                    <tr><td>Piezo 1</td><td id="piezo1">--</td></tr>
+                    <tr><td>Piezo 2</td><td id="piezo2">--</td></tr>
+                </table>
+            </div>
+
+            <div class="card visual-card">
+                <h3>❤️ Cardiac Status</h3>
+                <div class="big-icon">❤️</div>
+                <p>ECG and heart sound analysis</p>
+            </div>
+
+            <div class="card visual-card">
+                <h3>🫁 Pulmonary Status</h3>
+                <div class="big-icon">🫁</div>
+                <p>Respiration and lung sound monitoring</p>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<script src="/static/app_v2.js"></script>
+</body>
+</html>
