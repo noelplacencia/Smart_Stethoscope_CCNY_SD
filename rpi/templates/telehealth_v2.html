@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Telehealth V2</title>
+    <link rel="stylesheet" href="/static/style_v2.css">
+</head>
+<body class="light">
+
+<header class="topbar">
+    <h1>Telehealth Visit</h1>
+    <a href="/doctor_v2">Doctor View</a>
+    <a href="/patient_v2">Patient View</a>
+    <a href="/api/report_v2">Download PDF Report</a>
+</header>
+
+<main class="tele-grid">
+
+    <section class="card wide">
+        <h2>Video Consultation</h2>
+        <div class="video-box">
+            📹 Video Visit Placeholder
+            <p>Future version: secure doctor-patient WebRTC call.</p>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Remote Monitoring</h2>
+        <p>Doctor can remotely monitor ECG, heart sound, SpO₂, respiration, temperature, and AI alerts.</p>
+    </section>
+
+    <section class="card">
+        <h2>Telehealth Tools</h2>
+        <ul>
+            <li>PDF report export</li>
+            <li>Doctor notes</li>
+            <li>AI health summary</li>
+            <li>Remote dashboard access</li>
+        </ul>
+    </section>
+
+    <section class="card wide">
+        <h2>Clinical Report</h2>
+        <p>Generate a PDF summary of latest vitals, AI result, alerts, and timestamp.</p>
+        <a class="btn" href="/api/report_v2">Download Latest Report</a>
+    </section>
+
+</main>
+
+</body>
+</html>
