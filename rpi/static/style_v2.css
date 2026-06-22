@@ -30,14 +30,14 @@ body.light {
 }
 
 .sidebar {
-    width: 190px;
+    width: 185px;
     background: #050b14;
-    padding: 16px;
+    padding: 14px;
 }
 
 .sidebar h2 {
     margin-top: 0;
-    font-size: 22px;
+    font-size: 21px;
 }
 
 .sidebar a,
@@ -48,7 +48,7 @@ button {
     text-decoration: none;
     background: var(--blue);
     color: white;
-    padding: 8px 11px;
+    padding: 7px 10px;
     border-radius: 7px;
     margin: 4px;
     border: none;
@@ -66,8 +66,9 @@ button {
 }
 
 .sidebar-status {
-    font-size: 13px;
+    font-size: 12px;
     opacity: 0.9;
+    margin-top: 14px;
 }
 
 .content {
@@ -77,15 +78,15 @@ button {
 .compact-header {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 10px 18px;
+    gap: 12px;
+    padding: 9px 16px;
     border-bottom: 1px solid rgba(120,120,120,0.25);
 }
 
 .compact-header h1 {
     flex: 1;
     margin: 0;
-    font-size: 24px;
+    font-size: 23px;
 }
 
 .live {
@@ -93,17 +94,31 @@ button {
     font-weight: bold;
 }
 
+.alert-banner {
+    margin: 10px 12px 0 12px;
+    padding: 9px 14px;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.normal-banner {
+    background: rgba(22, 163, 74, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(22, 163, 74, 0.35);
+}
+
 .compact-grid {
-    padding: 12px;
+    padding: 10px 12px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 9px;
 }
 
 .card {
     background: var(--light-card);
     color: #101827;
-    padding: 12px;
+    padding: 10px;
     border-radius: 12px;
     box-shadow: 0 3px 12px rgba(0,0,0,0.08);
 }
@@ -116,26 +131,30 @@ button {
 
 .card h2,
 .card h3 {
-    margin: 0 0 7px 0;
-    font-size: 16px;
+    margin: 0 0 6px 0;
+    font-size: 15px;
 }
 
 .card p,
 .card li,
 .card td {
-    font-size: 13px;
+    font-size: 12.5px;
+}
+
+.patient-info p {
+    margin: 4px 0;
 }
 
 .metric div {
-    font-size: 27px;
+    font-size: 25px;
     font-weight: bold;
 }
 
 .status {
     display: inline-block;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: bold;
-    padding: 8px 12px;
+    padding: 7px 11px;
     border-radius: 10px;
 }
 
@@ -158,6 +177,10 @@ button {
     grid-column: span 2;
 }
 
+.small-chart {
+    grid-column: span 1;
+}
+
 .status-card {
     grid-column: span 2;
 }
@@ -165,22 +188,22 @@ button {
 #doctorEcg,
 #doctorHeart,
 #patientEcg {
-    height: 170px;
+    height: 155px;
 }
 
 #spo2Trend,
 #respTrend {
-    height: 130px;
+    height: 115px;
 }
 
 textarea {
     width: 100%;
-    min-height: 45px;
-    padding: 6px;
+    min-height: 38px;
+    padding: 5px;
     border-radius: 7px;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     box-sizing: border-box;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 table {
@@ -189,20 +212,45 @@ table {
 }
 
 td {
-    padding: 4px;
+    padding: 3px;
     border-bottom: 1px solid rgba(120,120,120,0.25);
 }
 
 .note-item {
-    margin-top: 6px;
-    padding: 6px;
+    margin-top: 5px;
+    padding: 5px;
     border-radius: 7px;
     background: rgba(120,120,120,0.12);
-    font-size: 12px;
+    font-size: 11.5px;
+}
+
+.big-icon {
+    font-size: 58px;
+    text-align: center;
+    margin: 5px 0;
+}
+
+.visual-card {
+    text-align: center;
+}
+
+.confidence-bar {
+    width: 100%;
+    height: 9px;
+    background: rgba(120,120,120,0.25);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+
+.confidence-fill {
+    width: 96%;
+    height: 100%;
+    background: var(--green);
 }
 
 .video-box {
-    height: 170px;
+    height: 155px;
     display: grid;
     place-content: center;
     text-align: center;
@@ -210,16 +258,12 @@ td {
     background: linear-gradient(135deg, #dbeafe, #eff6ff);
     font-size: 22px;
     font-weight: bold;
+    color: #101827;
 }
 
-img {
-    display: block;
-    margin: 6px auto;
-}
-
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
     .compact-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
 
     .chart-card,
@@ -228,7 +272,7 @@ img {
     }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 800px) {
     .shell {
         display: block;
     }
@@ -242,7 +286,8 @@ img {
     }
 
     .chart-card,
-    .status-card {
+    .status-card,
+    .small-chart {
         grid-column: span 1;
     }
 
