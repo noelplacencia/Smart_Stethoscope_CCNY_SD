@@ -22,42 +22,93 @@ function updateStatus(ai) {
     statusEl.textContent = ai.status || "Normal";
     statusEl.className = "status";
 
-    if (ai.status === "Normal") {
-        statusEl.classList.add("normal");
-    } else if (ai.risk_level === "high") {
+    if (ai.risk_level === "high") {
         statusEl.classList.add("critical");
+    } else if (ai.status === "Normal") {
+        statusEl.classList.add("normal");
     } else {
         statusEl.classList.add("warning");
     }
 
-    if (alertEl) alertEl.textContent = (ai.alerts || ["No active alerts"]).join(", ");
-    if (confEl) confEl.textContent = Math.round((ai.confidence || 0.96) * 100) + "%";
+    if (alertEl) {
+        alertEl.textContent =
+            (ai.alerts || ["No active alerts"]).join(", ");
+    }
+
+    if (confEl) {
+        confEl.textContent =
+            Math.round((ai.confidence || 0.96) * 100) + "%";
+    }
+}
+
+function generateDemoWave(length = 250) {
+    const arr = [];
+
+    for (let i = 0; i < length; i++) {
+
+        let v =
+            Math.sin(i * 0.12) * 0.8 +
+            Math.sin(i * 0.03) * 0.2;
+
+        if (i % 45 === 0) {
+            v += 2.5;
+        }
+
+        arr.push(v);
+    }
+
+    return arr;
 }
 
 function plotLine(divId, yData) {
+
     const div = document.getElementById(divId);
+
     if (!div) return;
 
-    const trace = {
-        y: yData,
-        mode: "lines",
-        line: { width: 2 }
-    };
+    if (!yData || yData.length === 0) {
+        yData = generateDemoWave();
+    }
 
-    const layout = {
-        margin: { l: 35, r: 10, t: 10, b: 30 },
-        paper_bgcolor: "rgba(0,0,0,0)",
-        plot_bgcolor: "rgba(0,0,0,0)",
-        xaxis: { showgrid: true, zeroline: false },
-        yaxis: { showgrid: true, zeroline: false },
-        showlegend: false
-    };
-
-    Plotly.react(divId, [trace], layout, {displayModeBar: false, responsive: true});
+    Plotly.react(
+        divId,
+        [{
+            y: yData,
+            mode: "lines",
+            line: {
+                width: 2
+            }
+        }],
+        {
+            margin: {
+                l: 25,
+                r: 5,
+                t: 5,
+                b: 20
+            },
+            paper_bgcolor: "rgba(0,0,0,0)",
+            plot_bgcolor: "rgba(0,0,0,0)",
+            showlegend: false,
+            xaxis: {
+                showgrid: true,
+                zeroline: false
+            },
+            yaxis: {
+                showgrid: true,
+                zeroline: false
+            }
+        },
+        {
+            displayModeBar: false,
+            responsive: true
+        }
+    );
 }
 
 async function updateDashboard() {
+
     try {
+
         const data = await fetchData();
         const latest = data.latest || {};
 
@@ -69,80 +120,145 @@ async function updateDashboard() {
         setText("pressure", latest.pressure ?? "--");
         setText("piezo1", latest.piezo1 ?? "--");
         setText("piezo2", latest.piezo2 ?? "--");
+
         setText("imux", latest.imu_x ?? "--");
         setText("imuy", latest.imu_y ?? "--");
         setText("imuz", latest.imu_z ?? "--");
+
         setText("updated", latest.timestamp ?? "--");
 
-        setText("bleStatus", latest.timestamp ? "Connected" : "Waiting");
+        setText(
+            "bleStatus",
+            latest.timestamp ? "Connected" : "Waiting"
+        );
 
         updateStatus(latest.ai_result);
 
-        plotLine("patientEcg", data.ecg_wave || []);
-        plotLine("doctorEcg", data.ecg_wave || []);
-        plotLine("doctorHeart", data.heart_wave || []);
-        plotLine("spo2Trend", data.spo2_trend || []);
-        plotLine("respTrend", data.resp_trend || []);
+        plotLine(
+            "patientEcg",
+            data.ecg_wave
+        );
+
+        plotLine(
+            "doctorEcg",
+            data.ecg_wave
+        );
+
+        plotLine(
+            "doctorHeart",
+            data.heart_wave
+        );
+
+        plotLine(
+            "spo2Trend",
+            data.spo2_trend
+        );
+
+        plotLine(
+            "respTrend",
+            data.resp_trend
+        );
 
     } catch (err) {
-        console.log("Dashboard update error:", err);
-        setText("bleStatus", "Disconnected");
+
+        console.log(err);
+
+        setText(
+            "bleStatus",
+            "Disconnected"
+        );
+
+        plotLine(
+            "doctorEcg",
+            generateDemoWave()
+        );
+
+        plotLine(
+            "doctorHeart",
+            generateDemoWave()
+        );
+
+        plotLine(
+            "patientEcg",
+            generateDemoWave()
+        );
     }
 }
 
-function getValue(id) {
-    const el = document.getElementById(id);
-    return el ? el.value : "";
-}
-
-function setValue(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.value = value || "";
-}
-
 async function saveNote() {
+
     const note = {
-        assessment: getValue("assessment"),
-        plan: getValue("plan")
+        assessment:
+            document.getElementById(
+                "assessment"
+            )?.value || "",
+
+        plan:
+            document.getElementById(
+                "plan"
+            )?.value || ""
     };
 
     await fetch("/api/notes", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: {
+            "Content-Type":
+                "application/json"
+        },
         body: JSON.stringify(note)
     });
 
-    setValue("assessment", "");
-    setValue("plan", "");
     await loadNotes();
-    alert("Doctor notes saved.");
 }
 
 async function loadNotes() {
-    const list = document.getElementById("notesList");
+
+    const list =
+        document.getElementById(
+            "notesList"
+        );
+
     if (!list) return;
 
     try {
-        const res = await fetch("/api/notes");
-        const notes = await res.json();
+
+        const response =
+            await fetch("/api/notes");
+
+        const notes =
+            await response.json();
 
         list.innerHTML = "";
 
         notes.forEach(note => {
-            const div = document.createElement("div");
-            div.className = "note-item";
+
+            const div =
+                document.createElement(
+                    "div"
+                );
+
+            div.className =
+                "note-item";
+
             div.innerHTML = `
                 <strong>${note.timestamp}</strong><br>
-                Assessment: ${note.assessment || ""}<br>
-                Plan: ${note.plan || ""}
+                Assessment: ${note.assessment}<br>
+                Plan: ${note.plan}
             `;
+
             list.appendChild(div);
+
         });
+
     } catch (err) {
-        console.log("Notes load error:", err);
+        console.log(err);
     }
 }
 
-setInterval(updateDashboard, 500);
+setInterval(
+    updateDashboard,
+    500
+);
+
 updateDashboard();
 loadNotes();
