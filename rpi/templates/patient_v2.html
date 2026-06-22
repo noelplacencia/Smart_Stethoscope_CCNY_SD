@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Patient Dashboard V2</title>
+    <link rel="stylesheet" href="/static/style_v2.css">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body class="light">
+
+<header class="topbar">
+    <h1>Patient View</h1>
+    <span class="live">● Live</span>
+    <a href="/doctor_v2">Doctor View</a>
+</header>
+
+<main class="patient-grid">
+
+    <section class="card status-card">
+        <h2>Overall Status</h2>
+        <div id="patientStatus" class="status normal">Normal</div>
+        <p id="patientAlert">All systems operating normally.</p>
+    </section>
+
+    <section class="card metric">
+        <h2>SpO₂</h2>
+        <div><span id="spo2">--</span>%</div>
+    </section>
+
+    <section class="card metric">
+        <h2>Heart Rate</h2>
+        <div><span id="hr">--</span> bpm</div>
+    </section>
+
+    <section class="card metric">
+        <h2>Respiration</h2>
+        <div><span id="resp">--</span> rpm</div>
+    </section>
+
+    <section class="card metric">
+        <h2>Temperature</h2>
+        <div><span id="temp">--</span> °C</div>
+    </section>
+
+    <section class="card wide">
+        <h2>Live ECG Activity</h2>
+        <div id="patientEcg"></div>
+    </section>
+
+    <section class="card">
+        <h2>AI Summary</h2>
+        <p id="confidence">96%</p>
+        <p>AI-assisted monitoring active</p>
+    </section>
+
+    <section class="card">
+        <h2>Health Tips</h2>
+        <ul>
+            <li>Maintain hydration</li>
+            <li>Monitor symptoms</li>
+            <li>Follow physician advice</li>
+        </ul>
+    </section>
+
+</main>
+
+<script src="/static/app_v2.js"></script>
+
+</body>
+</html>
