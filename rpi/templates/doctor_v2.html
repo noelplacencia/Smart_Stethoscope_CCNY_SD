@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Doctor Dashboard V2</title>
+    <link rel="stylesheet" href="/static/style_v2.css">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body class="dark">
+
+<div class="shell">
+    <aside class="sidebar">
+        <h2>🩺 SmartScope</h2>
+        <a href="/doctor_v2" class="active">Doctor V2</a>
+        <a href="/patient_v2">Patient V2</a>
+        <a href="/telehealth_v2">Telehealth</a>
+        <a href="/api/report_v2">Download PDF</a>
+        <a href="/doctor">Old Doctor View</a>
+    </aside>
+
+    <main class="content">
+        <header>
+            <h1>Doctor Clinical Dashboard V2</h1>
+            <span class="live">● Live</span>
+        </header>
+
+        <section class="grid">
+            <div class="card metric"><h3>Heart Rate</h3><h1><span id="hr">--</span> bpm</h1></div>
+            <div class="card metric"><h3>SpO₂</h3><h1><span id="spo2">--</span>%</h1></div>
+            <div class="card metric"><h3>Respiration</h3><h1><span id="resp">--</span> rpm</h1></div>
+            <div class="card metric"><h3>Temperature</h3><h1><span id="temp">--</span> °C</h1></div>
+
+            <div class="card wide"><h3>ECG Waveform</h3><div id="doctorEcg"></div></div>
+            <div class="card wide"><h3>Heart Sound / Chest Microphone</h3><div id="doctorHeart"></div></div>
+
+            <div class="card"><h3>SpO₂ Trend</h3><div id="spo2Trend"></div></div>
+            <div class="card"><h3>Respiration Trend</h3><div id="respTrend"></div></div>
+
+            <div class="card">
+                <h3>AI Health Summary</h3>
+                <div id="patientStatus" class="status normal">Normal</div>
+                <p id="patientAlert">No active alerts</p>
+                <p>Confidence: <span id="confidence">--</span></p>
+            </div>
+
+            <div class="card">
+                <h3>Device Status</h3>
+                <p>ESP32 BLE: <span id="bleStatus">Waiting</span></p>
+                <p>AI Engine: Running</p>
+                <p>Last Updated: <span id="updated">--</span></p>
+            </div>
+
+            <div class="card wide">
+                <h3>Doctor Notes</h3>
+                <textarea id="assessment" placeholder="Assessment"></textarea>
+                <textarea id="plan" placeholder="Plan / Recommendation"></textarea>
+                <button onclick="saveNote()">Save Notes</button>
+                <div id="notesList"></div>
+            </div>
+
+            <div class="card wide">
+                <h3>Raw Sensor Values</h3>
+                <table>
+                    <tr><td>Pressure</td><td id="pressure">--</td></tr>
+                    <tr><td>Piezo 1</td><td id="piezo1">--</td></tr>
+                    <tr><td>Piezo 2</td><td id="piezo2">--</td></tr>
+                    <tr><td>IMU X</td><td id="imux">--</td></tr>
+                    <tr><td>IMU Y</td><td id="imuy">--</td></tr>
+                    <tr><td>IMU Z</td><td id="imuz">--</td></tr>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="/static/app_v2.js"></script>
+</body>
+</html>
