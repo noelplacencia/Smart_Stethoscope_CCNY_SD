@@ -1,0 +1,214 @@
+:root {
+    --blue: #2563eb;
+    --green: #16a34a;
+    --orange: #f59e0b;
+    --red: #dc2626;
+    --dark-bg: #07111f;
+    --dark-card: #0f2035;
+    --light-bg: #f4f7fb;
+    --light-card: #ffffff;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body.dark {
+    background: var(--dark-bg);
+    color: white;
+}
+
+body.light {
+    background: var(--light-bg);
+    color: #101827;
+}
+
+.shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 230px;
+    background: #050b14;
+    padding: 24px 18px;
+}
+
+.sidebar h2 {
+    color: white;
+    margin-top: 0;
+}
+
+.sidebar a,
+.topbar a,
+.btn,
+button {
+    display: block;
+    text-decoration: none;
+    background: var(--blue);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.sidebar a.active {
+    background: var(--green);
+}
+
+.content {
+    flex: 1;
+}
+
+header,
+.topbar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 28px;
+    border-bottom: 1px solid rgba(120,120,120,0.25);
+}
+
+header h1,
+.topbar h1 {
+    flex: 1;
+    margin: 0;
+}
+
+.live {
+    color: var(--green);
+    font-weight: bold;
+}
+
+.grid,
+.patient-grid,
+.tele-grid {
+    padding: 24px;
+    display: grid;
+    gap: 18px;
+}
+
+.grid,
+.patient-grid {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.tele-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.card {
+    background: var(--light-card);
+    color: #101827;
+    padding: 18px;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.dark .card {
+    background: var(--dark-card);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.metric h1,
+.metric div {
+    font-size: 34px;
+    margin: 8px 0;
+}
+
+.status {
+    display: inline-block;
+    font-size: 30px;
+    font-weight: bold;
+    padding: 12px 18px;
+    border-radius: 12px;
+}
+
+.status.normal {
+    background: rgba(22,163,74,0.15);
+    color: var(--green);
+}
+
+.status.warning {
+    background: rgba(245,158,11,0.15);
+    color: var(--orange);
+}
+
+.status.critical {
+    background: rgba(220,38,38,0.15);
+    color: var(--red);
+}
+
+.wide {
+    grid-column: span 2;
+}
+
+#doctorEcg,
+#doctorHeart,
+#spo2Trend,
+#respTrend,
+#patientEcg {
+    height: 270px;
+}
+
+textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td {
+    padding: 8px;
+    border-bottom: 1px solid rgba(120,120,120,0.25);
+}
+
+.note-item {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(120,120,120,0.12);
+}
+
+.video-box {
+    height: 300px;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #dbeafe, #eff6ff);
+    font-size: 28px;
+    font-weight: bold;
+}
+
+@media (max-width: 1000px) {
+    .shell {
+        display: block;
+    }
+
+    .sidebar {
+        width: auto;
+    }
+
+    .grid,
+    .patient-grid,
+    .tele-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .wide {
+        grid-column: span 1;
+    }
+}
